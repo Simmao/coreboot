@@ -29,7 +29,7 @@ config VGA_BIOS_ID
 	string
 	default "8086,0152"
 
-nfig DRAM_RESET_GATE_GPIO # FIXME: check this
+config DRAM_RESET_GATE_GPIO # FIXME: check this
 	int
 	default 25
 

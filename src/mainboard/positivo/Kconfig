@@ -1,0 +1,16 @@
+if VENDOR_POSITIVO
+
+choice
+	prompt "Mainboard model"
+
+source "src/mainboard/positivo/*/Kconfig.name"
+
+endchoice
+
+source "src/mainboard/positivo/*/Kconfig"
+
+config MAINBOARD_VENDOR
+	string
+	default "POSITIVO"
+
+endif # VENDOR_POSITIVO

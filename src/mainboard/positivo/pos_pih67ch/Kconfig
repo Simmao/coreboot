@@ -1,0 +1,42 @@
+if BOARD_POSITIVO_POS_PIH67CH
+
+config BOARD_SPECIFIC_OPTIONS
+	def_bool y
+	select BOARD_ROMSIZE_KB_4096
+	select HAVE_ACPI_RESUME
+	select HAVE_ACPI_TABLES
+	select HAVE_CMOS_DEFAULT
+	select HAVE_OPTION_TABLE
+	select INTEL_GMA_HAVE_VBT
+	select INTEL_INT15
+	select MAINBOARD_HAS_LIBGFXINIT
+	select NORTHBRIDGE_INTEL_SANDYBRIDGE
+	select SERIRQ_CONTINUOUS_MODE
+	select SOUTHBRIDGE_INTEL_C216
+	select USE_NATIVE_RAMINIT
+	select MAINBOARD_USES_IFD_GBE_REGION
+	select SUPERIO_ITE_IT8728F
+
+config MAINBOARD_DIR
+	string
+	default "positivo/pos_pih67ch"
+
+config MAINBOARD_PART_NUMBER
+	string
+	default "POS-PIH67CH"
+
+config VGA_BIOS_ID
+	string
+	default "8086,0152"
+
+nfig DRAM_RESET_GATE_GPIO # FIXME: check this
+	int
+	default 25
+
+config USBDEBUG_HCD_INDEX # FIXME: check this
+	int
+	default 1
+
+#config CBFS_SIZE
+#	default 0x200000
+endif

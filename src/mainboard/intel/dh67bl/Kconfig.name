@@ -1,0 +1,2 @@
+ config BOARD_INTEL_DH67BL
+	bool "DH67BL"

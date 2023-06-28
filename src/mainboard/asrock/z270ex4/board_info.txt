@@ -1,0 +1,8 @@
+Category: desktop
+Board URL: https://www.asrock.com/mb/Intel/Z270EX4%20R2.0/
+ROM package: DIP-8
+ROM protocol: SPI
+ROM socketed: y
+Flashrom support: y
+Release year: 2015
+

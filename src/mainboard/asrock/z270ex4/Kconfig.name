@@ -1,0 +1,2 @@
+config BOARD_ASROCK_Z270EX4
+	bool "Z270EX4"

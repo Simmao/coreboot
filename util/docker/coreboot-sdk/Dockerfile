@@ -35,7 +35,7 @@ RUN \
 		gawk \
 		gcc \
 		git \
-		gnat-12 \
+		gnat \
 		golang \
 		graphicsmagick-imagemagick-compat \
 		graphviz \
@@ -75,7 +75,6 @@ RUN \
 		qemu-system-x86 \
 		rsync \
 		shellcheck \
-		subversion \
 		unifont \
 		uuid-dev \
 		vim-common \

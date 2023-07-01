@@ -36,12 +36,15 @@ chip soc/intel/meteorlake
 	# DPTF enable
 	register "dptf_enable" = "1"
 
+	# Temporary setting TCC of 90C = Tj max (110) - TCC_Offset (20)
+	register "tcc_offset" = "20"
+
 	# Enable CNVi BT
 	register "cnvi_bt_core" = "true"
 
 	register "sagv" = "SAGV_ENABLED"
 
-	register "sagv_freq_mhz[0]" = "2133"
+	register "sagv_freq_mhz[0]" = "3200"
 	register "sagv_gear[0]" = "4"
 
 	register "sagv_freq_mhz[1]" = "6000"
@@ -70,6 +73,7 @@ chip soc/intel/meteorlake
 	device domain 0 on
 		device ref igpu on end
 		device ref dtt on end
+		device ref ioe_shared_sram on end
 		device ref xhci on end
 		device ref pmc_shared_sram on end
 		device ref heci1 on end

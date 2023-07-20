@@ -81,8 +81,8 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF_LOCK(GPP_B15, NONE, NF1, LOCK_CONFIG),
 	/* GPP_B16 : [] ==> SOC_HDMI_HPD_L */
 	PAD_CFG_NF(GPP_B16, NONE, DEEP, NF2),
-	/* GPP_B17 : net NC.  Test pad. */
-	PAD_NC(GPP_B17, NONE),
+	/* GPP_B17 :[] ==> EN_TCHSCR_PWR */
+	PAD_CFG_GPO(GPP_B17, 0, DEEP),
 	/* GPP_B18 : [] ==> SOC_I2C_TPM_SDA */
 	PAD_CFG_NF_LOCK(GPP_B18, NONE, NF2, LOCK_CONFIG),
 	/* GPP_B19 : [] ==> SOC_I2C_TPM_SCL */
@@ -95,10 +95,10 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPO(GPP_B22, 0, DEEP),
 	/* GPP_B23 : net NC.  Test pad. */
 	PAD_NC(GPP_B23, NONE),
-	/* GPP_C00 : [] ==> EN_TCHSCR_PWR */
-	PAD_CFG_GPO(GPP_C00, 0, DEEP),
-	/* GPP_C01 : [] ==>  SOC_TCHSCR_RST_L */
-	PAD_CFG_GPO(GPP_C01, 0, DEEP),
+	/* GPP_C00 : net NC.  Test pad. */
+	PAD_NC(GPP_C00, NONE),
+	/* GPP_C01 : net NC.  Test pad. */
+	PAD_NC(GPP_C01, NONE),
 	/* GPP_C02 : SOC_TCHSCR_SPI_INT_STRAP ==> Component NC */
 	PAD_NC(GPP_C02, NONE),
 	/* GPP_C03 : [] ==> SOC_TCP_SMBUS_CLK*/
@@ -108,7 +108,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_C05 : [] ==> WWAN_PERST_L_STRAP */
 	PAD_NC(GPP_C05, NONE),
 	/* GPP_C06 : [] ==> SOC_TCHSCR_RPT_EN */
-	PAD_CFG_GPO(GPP_C06, 1, DEEP),
+	PAD_CFG_GPO(GPP_C06, 0, DEEP),
 	/* GPP_C07 : [] ==> SOC_TCHSCR_INT */
 	PAD_CFG_GPI_APIC(GPP_C07, NONE, PLTRST, LEVEL, NONE),
 	/* GPP_C08 : [] ==> SOCHOT_ODL */
@@ -158,8 +158,8 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF_LOCK(GPP_D05, NONE, NF1, LOCK_CONFIG),
 	/* GPP_D06 : [] ==> UART0_TXD. */
 	PAD_CFG_NF_LOCK(GPP_D06, NONE, NF1, LOCK_CONFIG),
-	/* GPP_D07 : net NC.  Test pad. */
-	PAD_NC(GPP_D07, NONE),
+	/* GPP_D07 : [] ==>  SOC_TCHSCR_RST_L */
+	PAD_CFG_GPO(GPP_D07, 0, DEEP),
 	/* GPP_D08 : net NC.  Test pad. */
 	PAD_NC(GPP_D08, NONE),
 	/* GPP_D09 : [] ==> I2S_MCLK_R */
@@ -181,9 +181,9 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF(GPP_D16, NONE, DEEP, NF2),
 	/* GPP_D17 : [] ==> I2S_SOC_RX_HP_TX */
 	PAD_CFG_NF(GPP_D17, NONE, DEEP, NF2),
-	/* GPP_D18 : net NC is not present in the given design */
-	PAD_NC(GPP_D18, NONE),
-	/* GPP_D19 : [] ==> SD_CLKREQ_ODL */
+	/* GPP_D18 : [] ==> SD_CLKREQ_ODL */
+	PAD_CFG_NF(GPP_D18, NONE, DEEP, NF1),
+	/* GPP_D19 : [] ==> SOC_REC_SWITCH_ODL*/
 	PAD_CFG_NF(GPP_D19, NONE, DEEP, NF1),
 	/* GPP_D20 : net NC is not present in the given design */
 	PAD_NC(GPP_D20, NONE),
@@ -234,17 +234,17 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPO(GPP_E22, 1, DEEP),
 
 	/* GPP_F00 :  [] ==> CNV_BRI_DT_R */
-	PAD_CFG_NF(GPP_F00, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F00, NONE, DEEP, NF1),
 	/* GPP_F01 :  [] ==> CNV_BRI_RSP */
-	PAD_CFG_NF(GPP_F01, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F01, UP_20K, DEEP, NF1),
 	/* GPP_F02 :  [] ==> CNV_RGI_DT_Rl */
-	PAD_CFG_NF(GPP_F02, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F02, NONE, DEEP, NF1),
 	/* GPP_F03 :  [] ==> CNV_RGI_RSP */
-	PAD_CFG_NF(GPP_F03, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F03, UP_20K, DEEP, NF1),
 	/* GPP_F04 :  [] ==> CNV_RF_RST_L */
-	PAD_CFG_NF(GPP_F04, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F04, NONE, DEEP, NF1),
 	/* GPP_F05 :  [] ==> CNV_CLKREQ */
-	PAD_CFG_NF(GPP_F05, NONE, DEEP, NF3),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F05, NONE, DEEP, NF3),
 	/* GPP_F06 : net NC is not present in the given design */
 	PAD_NC(GPP_F06, NONE),
 	/* GPP_F07 :  [] ==> UCAM_MCLK_R */

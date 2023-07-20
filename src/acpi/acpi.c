@@ -110,6 +110,25 @@ void acpi_add_table(acpi_rsdp_t *rsdp, void *table)
 		i + 1, entries_num, rsdt->header.length);
 }
 
+static enum cb_err acpi_fill_header(acpi_header_t *header, const char name[4],
+				    enum acpi_tables table, uint32_t size)
+{
+	if (!header)
+		return CB_ERR;
+
+	/* Fill out header fields. */
+	memcpy(header->signature, name, 4);
+	memcpy(header->oem_id, OEM_ID, 6);
+	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
+	memcpy(header->asl_compiler_id, ASLC, 4);
+
+	header->asl_compiler_revision = asl_revision;
+	header->revision = get_acpi_table_revision(table);
+	header->length = size;
+
+	return CB_SUCCESS;
+}
+
 static int acpi_create_mcfg_mmconfig(acpi_mcfg_mmconfig_t *mmconfig, u32 base,
 				u16 seg_nr, u8 start, u8 end)
 {
@@ -338,25 +357,13 @@ static unsigned long acpi_create_madt_lapics_with_nmis(unsigned long current)
 	return current;
 }
 
-static void acpi_create_madt(acpi_madt_t *madt)
+static void acpi_create_madt(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(madt->header);
+	acpi_madt_t *madt = (acpi_madt_t *)header;
 	unsigned long current = (unsigned long)madt + sizeof(acpi_madt_t);
 
-	memset((void *)madt, 0, sizeof(acpi_madt_t));
-
-	if (!header)
+	if (acpi_fill_header(header, "APIC", MADT, sizeof(acpi_madt_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "APIC", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_madt_t);
-	header->revision = get_acpi_table_revision(MADT);
 
 	madt->lapic_addr = cpu_get_lapic_addr();
 	if (CONFIG(ACPI_HAVE_PCAT_8259))
@@ -371,10 +378,8 @@ static void acpi_create_madt(acpi_madt_t *madt)
 	if (CONFIG(ACPI_CUSTOM_MADT))
 		current = acpi_fill_madt(current);
 
-	/* (Re)calculate length and checksum. */
+	/* (Re)calculate length . */
 	header->length = current - (unsigned long)madt;
-
-	header->checksum = acpi_checksum((void *)madt, header->length);
 }
 
 static unsigned long acpi_fill_mcfg(unsigned long current)
@@ -386,32 +391,20 @@ static unsigned long acpi_fill_mcfg(unsigned long current)
 }
 
 /* MCFG is defined in the PCI Firmware Specification 3.0. */
-static void acpi_create_mcfg(acpi_mcfg_t *mcfg)
+static void acpi_create_mcfg(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(mcfg->header);
+	acpi_mcfg_t *mcfg = (acpi_mcfg_t *)header;
 	unsigned long current = (unsigned long)mcfg + sizeof(acpi_mcfg_t);
 
-	memset((void *)mcfg, 0, sizeof(acpi_mcfg_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "MCFG", MCFG, sizeof(acpi_mcfg_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "MCFG", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_mcfg_t);
-	header->revision = get_acpi_table_revision(MCFG);
 
 	if (CONFIG(ECAM_MMCONF_SUPPORT))
 		current = acpi_fill_mcfg(current);
 
-	/* (Re)calculate length and checksum. */
+	/* (Re)calculate length */
 	header->length = current - (unsigned long)mcfg;
-	header->checksum = acpi_checksum((void *)mcfg, header->length);
 }
 
 static void *get_tcpa_log(u32 *size)
@@ -439,37 +432,25 @@ static void *get_tcpa_log(u32 *size)
 	return lasa;
 }
 
-static void acpi_create_tcpa(acpi_tcpa_t *tcpa)
+static void acpi_create_tcpa(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(tcpa->header);
+	if (!CONFIG(TPM1))
+		return;
+
+	acpi_tcpa_t *tcpa = (acpi_tcpa_t *)header;
 	u32 tcpa_log_len;
 	void *lasa;
-
-	memset((void *)tcpa, 0, sizeof(acpi_tcpa_t));
 
 	lasa = get_tcpa_log(&tcpa_log_len);
 	if (!lasa)
 		return;
 
-	if (!header)
+	if (acpi_fill_header(header, "TCPA", TCPA, sizeof(acpi_tcpa_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "TCPA", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_tcpa_t);
-	header->revision = get_acpi_table_revision(TCPA);
 
 	tcpa->platform_class = 0;
 	tcpa->laml = tcpa_log_len;
 	tcpa->lasa = (uintptr_t)lasa;
-
-	/* Calculate checksum. */
-	header->checksum = acpi_checksum((void *)tcpa, header->length);
 }
 
 static void *get_tpm2_log(u32 *size)
@@ -497,13 +478,14 @@ static void *get_tpm2_log(u32 *size)
 	return lasa;
 }
 
-static void acpi_create_tpm2(acpi_tpm2_t *tpm2)
+static void acpi_create_tpm2(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(tpm2->header);
+	if (!CONFIG(TPM2))
+		return;
+
+	acpi_tpm2_t *tpm2 = (acpi_tpm2_t *)header;
 	u32 tpm2_log_len;
 	void *lasa;
-
-	memset((void *)tpm2, 0, sizeof(acpi_tpm2_t));
 
 	/*
 	 * Some payloads like SeaBIOS depend on log area to use TPM2.
@@ -513,18 +495,8 @@ static void acpi_create_tpm2(acpi_tpm2_t *tpm2)
 	if (!lasa)
 		tpm2_log_len = 0;
 
-	if (!header)
+	if (acpi_fill_header(header, "TPM2", TPM2, sizeof(acpi_tpm2_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "TPM2", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_tpm2_t);
-	header->revision = get_acpi_table_revision(TPM2);
 
 	/* Hard to detect for coreboot. Just set it to 0 */
 	tpm2->platform_class = 0;
@@ -542,9 +514,6 @@ static void acpi_create_tpm2(acpi_tpm2_t *tpm2)
 	/* Fill the log area size and start address fields. */
 	tpm2->laml = tpm2_log_len;
 	tpm2->lasa = (uintptr_t)lasa;
-
-	/* Calculate checksum. */
-	header->checksum = acpi_checksum((void *)tpm2, header->length);
 }
 
 static void acpi_ssdt_write_cbtable(void)
@@ -570,20 +539,12 @@ static void acpi_ssdt_write_cbtable(void)
 	acpigen_pop_len();
 }
 
-static void acpi_create_ssdt_generator(acpi_header_t *ssdt, const char *oem_table_id)
+static void acpi_create_ssdt_generator(acpi_header_t *ssdt, void *unused)
 {
 	unsigned long current = (unsigned long)ssdt + sizeof(acpi_header_t);
 
-	memset((void *)ssdt, 0, sizeof(acpi_header_t));
-
-	memcpy(&ssdt->signature, "SSDT", 4);
-	ssdt->revision = get_acpi_table_revision(SSDT);
-	memcpy(&ssdt->oem_id, OEM_ID, 6);
-	memcpy(&ssdt->oem_table_id, oem_table_id, 8);
-	ssdt->oem_revision = 42;
-	memcpy(&ssdt->asl_compiler_id, ASLC, 4);
-	ssdt->asl_compiler_revision = asl_revision;
-	ssdt->length = sizeof(acpi_header_t);
+	if (acpi_fill_header(ssdt, "SSDT", SSDT, sizeof(acpi_header_t)) != CB_SUCCESS)
+		return;
 
 	acpigen_set_current((char *)current);
 
@@ -600,7 +561,6 @@ static void acpi_create_ssdt_generator(acpi_header_t *ssdt, const char *oem_tabl
 
 	/* (Re)calculate length and checksum. */
 	ssdt->length = current - (unsigned long)ssdt;
-	ssdt->checksum = acpi_checksum((void *)ssdt, ssdt->length);
 }
 
 int acpi_create_srat_lapic(acpi_srat_lapic_t *lapic, u8 node, u8 apic)
@@ -671,18 +631,8 @@ void acpi_create_srat(acpi_srat_t *srat,
 
 	memset((void *)srat, 0, sizeof(acpi_srat_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "SRAT", SRAT, sizeof(acpi_srat_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "SRAT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_srat_t);
-	header->revision = get_acpi_table_revision(SRAT);
 
 	srat->resv = 1; /* Spec: Reserved to 1 for backwards compatibility. */
 
@@ -757,18 +707,8 @@ void acpi_create_cedt(acpi_cedt_t *cedt, unsigned long (*acpi_fill_cedt)(unsigne
 
 	memset((void *)cedt, 0, sizeof(acpi_cedt_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "CEDT", CEDT, sizeof(acpi_cedt_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "CEDT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_cedt_t);
-	header->revision = get_acpi_table_revision(CEDT);
 
 	current = acpi_fill_cedt(current);
 
@@ -802,18 +742,8 @@ void acpi_create_hmat(acpi_hmat_t *hmat,
 
 	memset((void *)hmat, 0, sizeof(acpi_hmat_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "HMAT", HMAT, sizeof(acpi_hmat_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "HMAT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_hmat_t);
-	header->revision = get_acpi_table_revision(HMAT);
 
 	current = acpi_fill_hmat(current);
 
@@ -830,18 +760,8 @@ void acpi_create_dmar(acpi_dmar_t *dmar, enum dmar_flags flags,
 
 	memset((void *)dmar, 0, sizeof(acpi_dmar_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "DMAR", DMAR, sizeof(acpi_dmar_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "DMAR", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_dmar_t);
-	header->revision = get_acpi_table_revision(DMAR);
 
 	dmar->host_address_width = cpu_phys_address_size() - 1;
 	dmar->flags = flags;
@@ -1021,18 +941,8 @@ void acpi_create_slit(acpi_slit_t *slit,
 
 	memset((void *)slit, 0, sizeof(acpi_slit_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "SLIT", SLIT, sizeof(acpi_slit_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "SLIT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_slit_t);
-	header->revision = get_acpi_table_revision(SLIT);
 
 	current = acpi_fill_slit(current);
 
@@ -1049,18 +959,8 @@ static void acpi_create_hpet(acpi_hpet_t *hpet)
 
 	memset((void *)hpet, 0, sizeof(acpi_hpet_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "HPET", HPET, sizeof(acpi_hpet_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "HPET", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_hpet_t);
-	header->revision = get_acpi_table_revision(HPET);
 
 	/* Fill out HPET address. */
 	addr->space_id = ACPI_ADDRESS_SPACE_MEMORY;
@@ -1204,15 +1104,9 @@ void acpi_create_einj(acpi_einj_t *einj, uintptr_t addr, u8 actions)
 
 	memset((void *)einj, 0, sizeof(*einj));
 
-	/* Fill out header fields. */
-	memcpy(header->signature, "EINJ", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
+	if (acpi_fill_header(header, "EINJ", EINJ, sizeof(acpi_einj_t)) != CB_SUCCESS)
+		return;
 
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_einj_t);
-	header->revision = 1;
 	inj_header->einj_header_size = sizeof(acpi_injection_header_t);
 	inj_header->entry_count = ACTION_COUNT;
 
@@ -1232,17 +1126,8 @@ void acpi_create_vfct(const struct device *device,
 
 	memset((void *)vfct, 0, sizeof(acpi_vfct_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "VFCT", VFCT, sizeof(acpi_vfct_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "VFCT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->revision = get_acpi_table_revision(VFCT);
 
 	current = acpi_fill_vfct(device, vfct, current);
 
@@ -1267,15 +1152,8 @@ void acpi_create_ipmi(const struct device *device,
 	acpi_header_t *header = &(spmi->header);
 	memset((void *)spmi, 0, sizeof(struct acpi_spmi));
 
-	/* Fill out header fields. */
-	memcpy(header->signature, "SPMI", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(struct acpi_spmi);
-	header->revision = get_acpi_table_revision(SPMI);
+	if (acpi_fill_header(header, "SPMI", SPMI, sizeof(struct acpi_spmi)) != CB_SUCCESS)
+		return;
 
 	spmi->reserved = 1;
 
@@ -1315,18 +1193,8 @@ void acpi_create_ivrs(acpi_ivrs_t *ivrs,
 
 	memset((void *)ivrs, 0, sizeof(acpi_ivrs_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "IVRS", IVRS, sizeof(acpi_ivrs_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "IVRS", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_ivrs_t);
-	header->revision = get_acpi_table_revision(IVRS);
 
 	current = acpi_fill_ivrs(ivrs, current);
 
@@ -1344,18 +1212,8 @@ void acpi_create_crat(struct acpi_crat_header *crat,
 
 	memset((void *)crat, 0, sizeof(struct acpi_crat_header));
 
-	if (!header)
+	if (acpi_fill_header(header, "CRAT", CRAT, sizeof(struct acpi_crat_header)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "CRAT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(struct acpi_crat_header);
-	header->revision = get_acpi_table_revision(CRAT);
 
 	current = acpi_fill_crat(crat, current);
 
@@ -1401,15 +1259,8 @@ static void acpi_create_dbg2(acpi_dbg2_header_t *dbg2,
 	memset(dbg2, 0, sizeof(acpi_dbg2_header_t));
 	header = &(dbg2->header);
 
-	if (!header)
+	if (acpi_fill_header(header, "DBG2", DBG2, sizeof(acpi_dbg2_header_t)) != CB_SUCCESS)
 		return;
-
-	header->revision = get_acpi_table_revision(DBG2);
-	memcpy(header->signature, "DBG2", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-	header->asl_compiler_revision = asl_revision;
 
 	/* One debug device defined */
 	dbg2->devices_offset = sizeof(acpi_dbg2_header_t);
@@ -1504,9 +1355,9 @@ unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
 	return current;
 }
 
-static void acpi_create_facs(acpi_facs_t *facs)
+static void acpi_create_facs(void *header)
 {
-	memset((void *)facs, 0, sizeof(acpi_facs_t));
+	acpi_facs_t *facs = header;
 
 	memcpy(facs->signature, "FACS", 4);
 	facs->length = sizeof(acpi_facs_t);
@@ -1523,18 +1374,8 @@ static void acpi_write_rsdt(acpi_rsdt_t *rsdt, char *oem_id, char *oem_table_id)
 {
 	acpi_header_t *header = &(rsdt->header);
 
-	if (!header)
+	if (acpi_fill_header(header, "RSDT", RSDT, sizeof(acpi_rsdt_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "RSDT", 4);
-	memcpy(header->oem_id, oem_id, 6);
-	memcpy(header->oem_table_id, oem_table_id, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_rsdt_t);
-	header->revision = get_acpi_table_revision(RSDT);
 
 	/* Entries are filled in later, we come with an empty set. */
 
@@ -1546,18 +1387,8 @@ static void acpi_write_xsdt(acpi_xsdt_t *xsdt, char *oem_id, char *oem_table_id)
 {
 	acpi_header_t *header = &(xsdt->header);
 
-	if (!header)
+	if (acpi_fill_header(header, "XSDT", XSDT, sizeof(acpi_xsdt_t)) != CB_SUCCESS)
 		return;
-
-	/* Fill out header fields. */
-	memcpy(header->signature, "XSDT", 4);
-	memcpy(header->oem_id, oem_id, 6);
-	memcpy(header->oem_table_id, oem_table_id, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-
-	header->asl_compiler_revision = asl_revision;
-	header->length = sizeof(acpi_xsdt_t);
-	header->revision = get_acpi_table_revision(XSDT);
 
 	/* Entries are filled in later, we come with an empty set. */
 
@@ -1663,16 +1494,8 @@ void acpi_write_hest(acpi_hest_t *hest,
 
 	memset(hest, 0, sizeof(acpi_hest_t));
 
-	if (!header)
+	if (acpi_fill_header(header, "HEST", HEST, sizeof(acpi_hest_t)) != CB_SUCCESS)
 		return;
-
-	memcpy(header->signature, "HEST", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-	header->asl_compiler_revision = asl_revision;
-	header->length += sizeof(acpi_hest_t);
-	header->revision = get_acpi_table_revision(HEST);
 
 	acpi_fill_hest(hest);
 
@@ -1681,50 +1504,37 @@ void acpi_write_hest(acpi_hest_t *hest,
 }
 
 /* ACPI 3.0b */
-static void acpi_write_bert(acpi_bert_t *bert, uintptr_t region, size_t length)
+static void acpi_create_bert(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(bert->header);
-
-	memset(bert, 0, sizeof(acpi_bert_t));
-
-	if (!header)
+	if (!CONFIG(ACPI_BERT))
 		return;
 
-	memcpy(header->signature, "BERT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-	header->asl_compiler_revision = asl_revision;
-	header->length += sizeof(acpi_bert_t);
-	header->revision = get_acpi_table_revision(BERT);
+	acpi_bert_t *bert = (acpi_bert_t *)header;
 
-	bert->error_region = region;
-	bert->region_length = length;
+	void *region;
+	size_t size;
+	if (acpi_soc_get_bert_region(&region, &size) != CB_SUCCESS)
+		return;
 
-	/* Calculate checksums. */
-	header->checksum = acpi_checksum((void *)bert, header->length);
+	if (acpi_fill_header(header, "BERT", BERT, sizeof(acpi_bert_t)) != CB_SUCCESS)
+		return;
+
+	bert->error_region = (uintptr_t)region;
+	bert->region_length = (size_t)size;
 }
 
 __weak void arch_fill_fadt(acpi_fadt_t *fadt) { }
 __weak void soc_fill_fadt(acpi_fadt_t *fadt) { }
 __weak void mainboard_fill_fadt(acpi_fadt_t *fadt) { }
 
-static void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
+static acpi_header_t *dsdt;
+static void acpi_create_fadt(acpi_header_t *header, void *arg1)
 {
-	acpi_header_t *header = &(fadt->header);
+	acpi_fadt_t *fadt = (acpi_fadt_t *)header;
+	acpi_facs_t *facs = (acpi_facs_t *)(*(acpi_facs_t **)arg1);
 
-	memset((void *)fadt, 0, sizeof(acpi_fadt_t));
-
-	if (!header)
+	if (acpi_fill_header(header, "FACP", FADT, sizeof(acpi_fadt_t)) != CB_SUCCESS)
 		return;
-
-	memcpy(header->signature, "FACP", 4);
-	header->length = sizeof(acpi_fadt_t);
-	header->revision = get_acpi_table_revision(FADT);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-	header->asl_compiler_revision = asl_revision;
 
 	fadt->FADT_MinorVersion = get_acpi_fadt_minor_version();
 	fadt->firmware_ctrl = (unsigned long)facs;
@@ -1756,37 +1566,23 @@ static void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 
 	soc_fill_fadt(fadt);
 	mainboard_fill_fadt(fadt);
-
-	header->checksum =
-	    acpi_checksum((void *)fadt, header->length);
 }
 
-static void acpi_create_lpit(acpi_lpit_t *lpit)
+static void acpi_create_lpit(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(lpit->header);
-	unsigned long current = (unsigned long)lpit + sizeof(acpi_lpit_t);
-
-	memset((void *)lpit, 0, sizeof(acpi_lpit_t));
-
-	if (!header)
+	if (!CONFIG(ACPI_LPIT))
 		return;
 
-	/* Fill out header fields. */
-	memcpy(header->signature, "LPIT", 4);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
+	acpi_lpit_t *lpit = (acpi_lpit_t *)header;
+	unsigned long current = (unsigned long)lpit + sizeof(acpi_lpit_t);
 
-	header->asl_compiler_revision = asl_revision;
-	header->revision = get_acpi_table_revision(LPIT);
-	header->oem_revision = 42;
-	header->length = sizeof(acpi_lpit_t);
+	if (acpi_fill_header(header, "LPIT", LPIT, sizeof(acpi_lpit_t)) != CB_SUCCESS)
+		return;
 
 	current = acpi_fill_lpit(current);
 
-	/* (Re)calculate length and checksum. */
+	/* (Re)calculate length. */
 	header->length = current - (unsigned long)lpit;
-	header->checksum = acpi_checksum((void *)lpit, header->length);
 }
 
 unsigned long acpi_create_lpi_desc_ncst(acpi_lpi_desc_ncst_t *lpi_desc, uint16_t uid)
@@ -1811,13 +1607,10 @@ static uint8_t acpi_spcr_type(void)
 	return 0xff;
 }
 
-static void acpi_create_spcr(acpi_spcr_t *spcr)
+static void acpi_create_spcr(acpi_header_t *header, void *unused)
 {
-	acpi_header_t *header = &(spcr->header);
+	acpi_spcr_t *spcr = (acpi_spcr_t *)header;
 	struct lb_serial serial;
-
-	/* The caller checks the header size, so call this first */
-	memset((void *)spcr, 0, sizeof(acpi_spcr_t));
 
 	if (!CONFIG(CONSOLE_SERIAL))
 		return;
@@ -1825,13 +1618,8 @@ static void acpi_create_spcr(acpi_spcr_t *spcr)
 	if (fill_lb_serial(&serial) != CB_SUCCESS)
 		return;
 
-	memcpy(header->signature, "SPCR", 4);
-	header->length = sizeof(acpi_spcr_t);
-	header->revision = get_acpi_table_revision(SPCR);
-	memcpy(header->oem_id, OEM_ID, 6);
-	memcpy(header->oem_table_id, ACPI_TABLE_CREATOR, 8);
-	memcpy(header->asl_compiler_id, ASLC, 4);
-	header->asl_compiler_revision = asl_revision;
+	if (acpi_fill_header(header, "SPCR", SPCR, sizeof(acpi_spcr_t)) != CB_SUCCESS)
+		return;
 
 	spcr->interface_type = acpi_spcr_type();
 	assert(serial.type == LB_SERIAL_TYPE_IO_MAPPED
@@ -1886,6 +1674,46 @@ void preload_acpi_dsdt(void)
 	cbfs_preload(file);
 }
 
+static void acpi_create_dsdt(acpi_header_t *header, void *dsdt_file_arg)
+{
+	dsdt = header;
+	acpi_header_t *dsdt_file = *(acpi_header_t **)dsdt_file_arg;
+	unsigned long current = (unsigned long)header;
+
+	dsdt = (acpi_header_t *)current;
+	memcpy(dsdt, dsdt_file, sizeof(acpi_header_t));
+	if (dsdt->length >= sizeof(acpi_header_t)) {
+		current += sizeof(acpi_header_t);
+
+		acpigen_set_current((char *)current);
+
+		if (CONFIG(ACPI_SOC_NVS))
+			acpi_fill_gnvs();
+		if (CONFIG(CHROMEOS_NVS))
+			acpi_fill_cnvs();
+
+		for (const struct device *dev = all_devices; dev; dev = dev->next)
+			if (dev->ops && dev->ops->acpi_inject_dsdt)
+				dev->ops->acpi_inject_dsdt(dev);
+		current = (unsigned long)acpigen_get_current();
+		memcpy((char *)current,
+		       (char *)dsdt_file + sizeof(acpi_header_t),
+		       dsdt->length - sizeof(acpi_header_t));
+		current += dsdt->length - sizeof(acpi_header_t);
+
+		/* (Re)calculate length. */
+		dsdt->length = current - (unsigned long)dsdt;
+	}
+}
+
+static void acpi_create_slic(acpi_header_t *header, void *slic_file_arg)
+{
+	acpi_header_t *slic_file = *(acpi_header_t **)slic_file_arg;
+	acpi_header_t *slic = header;
+	if (slic_file)
+		memcpy(slic, slic_file, slic_file->length);
+}
+
 static uintptr_t coreboot_rsdp;
 
 uintptr_t get_coreboot_rsdp(void)
@@ -1931,21 +1759,32 @@ unsigned long write_acpi_tables(const unsigned long start)
 	acpi_rsdp_t *rsdp;
 	acpi_rsdt_t *rsdt = NULL;
 	acpi_xsdt_t *xsdt = NULL;
-	acpi_fadt_t *fadt = NULL;
 	acpi_facs_t *facs = NULL;
-	acpi_header_t *slic_file, *slic = NULL;
+	acpi_header_t *slic_file;
 	acpi_header_t *ssdt = NULL;
-	acpi_header_t *dsdt_file, *dsdt = NULL;
-	acpi_mcfg_t *mcfg = NULL;
-	acpi_tcpa_t *tcpa = NULL;
-	acpi_tpm2_t *tpm2 = NULL;
-	acpi_madt_t *madt = NULL;
-	acpi_lpit_t *lpit = NULL;
-	acpi_bert_t *bert = NULL;
+	acpi_header_t *dsdt_file;
 	struct device *dev;
 	unsigned long fw;
 	size_t slic_size, dsdt_size;
 	char oem_id[6], oem_table_id[8];
+
+	const struct acpi_table_generator {
+		void (*create_table)(acpi_header_t *table, void *arg);
+		void *args;
+		size_t min_size;
+	} tables[] = {
+		{ acpi_create_dsdt, &dsdt_file, sizeof(acpi_header_t) },
+		{ acpi_create_fadt, &facs, sizeof(acpi_fadt_t) },
+		{ acpi_create_slic, &slic_file, sizeof(acpi_header_t) },
+		{ acpi_create_ssdt_generator, NULL, sizeof(acpi_header_t) },
+		{ acpi_create_mcfg, NULL, sizeof(acpi_mcfg_t) },
+		{ acpi_create_tcpa, NULL, sizeof(acpi_tcpa_t) },
+		{ acpi_create_tpm2, NULL, sizeof(acpi_tpm2_t) },
+		{ acpi_create_lpit, NULL, sizeof(acpi_lpit_t) },
+		{ acpi_create_madt, NULL, sizeof(acpi_header_t) },
+		{ acpi_create_bert, NULL, sizeof(acpi_bert_t) },
+		{ acpi_create_spcr, NULL, sizeof(acpi_spcr_t) },
+	};
 
 	current = start;
 
@@ -1992,7 +1831,7 @@ unsigned long write_acpi_tables(const unsigned long start)
 		ssdt->length = current - (unsigned long)ssdt;
 		ssdt->checksum = acpi_checksum((void *)ssdt, ssdt->length);
 
-		acpi_create_ssdt_generator(ssdt, ACPI_TABLE_CREATOR);
+		acpi_create_ssdt_generator(ssdt, NULL);
 
 		acpi_add_table(rsdp, ssdt);
 
@@ -2052,59 +1891,30 @@ unsigned long write_acpi_tables(const unsigned long start)
 	acpi_write_rsdt(rsdt, oem_id, oem_table_id);
 	acpi_write_xsdt(xsdt, oem_id, oem_table_id);
 
-	printk(BIOS_DEBUG, "ACPI:    * FACS\n");
 	current = ALIGN_UP(current, 64);
+
+	printk(BIOS_DEBUG, "ACPI:    * FACS\n");
 	facs = (acpi_facs_t *)current;
 	current += sizeof(acpi_facs_t);
 	current = acpi_align_current(current);
 	acpi_create_facs(facs);
 
-	printk(BIOS_DEBUG, "ACPI:    * DSDT\n");
-	dsdt = (acpi_header_t *)current;
-	memcpy(dsdt, dsdt_file, sizeof(acpi_header_t));
-	if (dsdt->length >= sizeof(acpi_header_t)) {
-		current += sizeof(acpi_header_t);
-
-		acpigen_set_current((char *)current);
-
-		if (CONFIG(ACPI_SOC_NVS))
-			acpi_fill_gnvs();
-		if (CONFIG(CHROMEOS_NVS))
-			acpi_fill_cnvs();
-
-		for (dev = all_devices; dev; dev = dev->next)
-			if (dev->ops && dev->ops->acpi_inject_dsdt)
-				dev->ops->acpi_inject_dsdt(dev);
-		current = (unsigned long)acpigen_get_current();
-		memcpy((char *)current,
-		       (char *)dsdt_file + sizeof(acpi_header_t),
-		       dsdt->length - sizeof(acpi_header_t));
-		current += dsdt->length - sizeof(acpi_header_t);
-
-		/* (Re)calculate length and checksum. */
-		dsdt->length = current - (unsigned long)dsdt;
-		dsdt->checksum = 0;
-		dsdt->checksum = acpi_checksum((void *)dsdt, dsdt->length);
-	}
-
-	current = acpi_align_current(current);
-
-	printk(BIOS_DEBUG, "ACPI:    * FADT\n");
-	fadt = (acpi_fadt_t *)current;
-	current += sizeof(acpi_fadt_t);
-	current = acpi_align_current(current);
-
-	acpi_create_fadt(fadt, facs, dsdt);
-	acpi_add_table(rsdp, fadt);
-
-	if (slic_file) {
-		printk(BIOS_DEBUG, "ACPI:     * SLIC\n");
-		slic = (acpi_header_t *)current;
-		memcpy(slic, slic_file, slic_file->length);
-		current += slic_file->length;
+	for (size_t i = 0; i < ARRAY_SIZE(tables); i++) {
+		acpi_header_t *header = (acpi_header_t *)current;
+		memset(header, 0, tables[i].min_size);
+		tables[i].create_table(header, tables[i].args);
+		if (header->length < tables[i].min_size)
+			continue;
+		header->checksum = 0;
+		header->checksum = acpi_checksum((void *)header, header->length);
+		current += header->length;
 		current = acpi_align_current(current);
-		acpi_add_table(rsdp, slic);
-		cbfs_unmap(slic_file);
+
+		if (tables[i].create_table == acpi_create_dsdt)
+			continue;
+
+		printk(BIOS_DEBUG, "ACPI:    * %.4s\n", header->signature);
+		acpi_add_table(rsdp, header);
 	}
 
 	/*
@@ -2113,94 +1923,8 @@ unsigned long write_acpi_tables(const unsigned long start)
 	 * This is why unmapping of dsdt_file must be done after
 	 * unmapping slic file.
 	 */
+	cbfs_unmap(slic_file);
 	cbfs_unmap(dsdt_file);
-
-	printk(BIOS_DEBUG, "ACPI:     * SSDT\n");
-	ssdt = (acpi_header_t *)current;
-	acpi_create_ssdt_generator(ssdt, ACPI_TABLE_CREATOR);
-	if (ssdt->length > sizeof(acpi_header_t)) {
-		current += ssdt->length;
-		acpi_add_table(rsdp, ssdt);
-		current = acpi_align_current(current);
-	}
-
-	printk(BIOS_DEBUG, "ACPI:    * MCFG\n");
-	mcfg = (acpi_mcfg_t *)current;
-	acpi_create_mcfg(mcfg);
-	if (mcfg->header.length > sizeof(acpi_mcfg_t)) {
-		current += mcfg->header.length;
-		current = acpi_align_current(current);
-		acpi_add_table(rsdp, mcfg);
-	}
-
-	if (CONFIG(TPM1)) {
-		printk(BIOS_DEBUG, "ACPI:    * TCPA\n");
-		tcpa = (acpi_tcpa_t *)current;
-		acpi_create_tcpa(tcpa);
-		if (tcpa->header.length >= sizeof(acpi_tcpa_t)) {
-			current += tcpa->header.length;
-			current = acpi_align_current(current);
-			acpi_add_table(rsdp, tcpa);
-		}
-	}
-
-	if (CONFIG(TPM2)) {
-		printk(BIOS_DEBUG, "ACPI:    * TPM2\n");
-		tpm2 = (acpi_tpm2_t *)current;
-		acpi_create_tpm2(tpm2);
-		if (tpm2->header.length >= sizeof(acpi_tpm2_t)) {
-			current += tpm2->header.length;
-			current = acpi_align_current(current);
-			acpi_add_table(rsdp, tpm2);
-		}
-	}
-
-	if (CONFIG(ACPI_LPIT)) {
-		printk(BIOS_DEBUG, "ACPI:     * LPIT\n");
-
-		lpit = (acpi_lpit_t *)current;
-		acpi_create_lpit(lpit);
-		if (lpit->header.length >= sizeof(acpi_lpit_t)) {
-			current += lpit->header.length;
-			current = acpi_align_current(current);
-			acpi_add_table(rsdp, lpit);
-		}
-	}
-
-	printk(BIOS_DEBUG, "ACPI:    * MADT\n");
-
-	madt = (acpi_madt_t *)current;
-	acpi_create_madt(madt);
-	if (madt->header.length > sizeof(acpi_madt_t)) {
-		current += madt->header.length;
-		acpi_add_table(rsdp, madt);
-	}
-
-	current = acpi_align_current(current);
-
-	if (CONFIG(ACPI_BERT)) {
-		void *region;
-		size_t size;
-		bert = (acpi_bert_t *)current;
-		if (acpi_soc_get_bert_region(&region, &size) == CB_SUCCESS) {
-			printk(BIOS_DEBUG, "ACPI:    * BERT\n");
-			acpi_write_bert(bert, (uintptr_t)region, size);
-			if (bert->header.length >= sizeof(acpi_bert_t)) {
-				current += bert->header.length;
-				acpi_add_table(rsdp, bert);
-			}
-			current = acpi_align_current(current);
-		}
-	}
-
-	printk(BIOS_DEBUG, "ACPI:    * SPCR\n");
-	acpi_spcr_t * const spcr = (acpi_spcr_t *)current;
-	acpi_create_spcr(spcr);
-	if (spcr->header.length >= sizeof(acpi_spcr_t)) {
-		current += spcr->header.length;
-		acpi_add_table(rsdp, spcr);
-	}
-	current = acpi_align_current(current);
 
 	printk(BIOS_DEBUG, "current = %lx\n", current);
 

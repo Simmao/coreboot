@@ -64,9 +64,6 @@ chip soc/intel/meteorlake
 		[PchSerialIoIndexI2C5] = PchSerialIoPci,
 	}"
 
-	# Temporary setting TCC of 90C = Tj max - Tcc
-	register "tcc_offset" = "20"
-
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
 	#| Field             |  Value                    |
@@ -90,13 +87,13 @@ chip soc/intel/meteorlake
 			.speed = I2C_SPEED_FAST,
 			.rise_time_ns = 650,
 			.fall_time_ns = 400,
-			.data_hold_time_ns = 50,
+			.data_hold_time_ns = 100,
 		},
 		.i2c[3] = {
 			.speed = I2C_SPEED_FAST,
 			.rise_time_ns = 650,
-			.fall_time_ns = 400,
-			.data_hold_time_ns = 50,
+			.fall_time_ns = 150,
+			.data_hold_time_ns = 400,
 		},
 		.i2c[4] = {
 			.early_init = 1,
@@ -380,9 +377,9 @@ chip soc/intel/meteorlake
 				register "generic.desc" = ""ILITEK Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C07_IRQ)"
 				register "generic.probed" = "1"
-				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C01)"
+				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_D07)"
 				register "generic.reset_delay_ms" = "200"
-				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C00)"
+				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B17)"
 				register "generic.enable_delay_ms" = "12"
 				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C06)"
 				register "generic.stop_off_delay_ms" = "2"
@@ -397,10 +394,10 @@ chip soc/intel/meteorlake
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C07_IRQ)"
 				register "generic.probed" = "1"
-				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C01)"
+				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_D07)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
-				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C00)"
+				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B17)"
 				register "generic.enable_delay_ms" = "1"
 				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C06)"
 				register "generic.stop_off_delay_ms" = "2"

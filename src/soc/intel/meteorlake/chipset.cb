@@ -8,10 +8,19 @@ chip soc/intel/meteorlake
 		.tdp_pl4 = 114,
 	}"
 
+	register "power_limits_config[MTL_P_682_CORE]" = "{
+		.tdp_pl1_override = 28,
+		.tdp_pl2_override = 64,
+		.tdp_pl4 = 120,
+	}"
+
 	# NOTE: if any variant wants to override this value, use the same format
 	# as register "common_soc_config.pch_thermal_trip" = "value", instead of
 	# putting it under register "common_soc_config" in overridetree.cb file.
 	register "common_soc_config.pch_thermal_trip" = "130"
+
+	# Temporary setting TCC of 90C = Tj max (110) - TCC_Offset (20)
+	register "tcc_offset" = "20"
 
 	# Enable CNVi WiFi
 	register "cnvi_wifi_core" = "true"

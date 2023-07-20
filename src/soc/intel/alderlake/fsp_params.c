@@ -50,6 +50,7 @@
 #define ICC_MAX_ID_ADL_M_MA	12000
 #define ICC_MAX_ID_ADL_N_MA	27000
 #define ICC_MAX_ADL_S		33000
+#define ICC_MAX_RPL_S		36000
 
 /*
  * ME End of Post configuration
@@ -538,7 +539,21 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 	case PCI_DID_INTEL_ADL_S_ID_10:
 	case PCI_DID_INTEL_ADL_S_ID_11:
 	case PCI_DID_INTEL_ADL_S_ID_12:
+	case PCI_DID_INTEL_RPL_HX_ID_1:
+	case PCI_DID_INTEL_RPL_HX_ID_2:
+	case PCI_DID_INTEL_RPL_HX_ID_3:
+	case PCI_DID_INTEL_RPL_HX_ID_4:
+	case PCI_DID_INTEL_RPL_HX_ID_5:
+	case PCI_DID_INTEL_RPL_HX_ID_6:
+	case PCI_DID_INTEL_RPL_HX_ID_7:
+	case PCI_DID_INTEL_RPL_HX_ID_8:
 		return ICC_MAX_ADL_S;
+	case PCI_DID_INTEL_RPL_S_ID_1:
+	case PCI_DID_INTEL_RPL_S_ID_2:
+	case PCI_DID_INTEL_RPL_S_ID_3:
+	case PCI_DID_INTEL_RPL_S_ID_4:
+	case PCI_DID_INTEL_RPL_S_ID_5:
+		return ICC_MAX_RPL_S;
 	default:
 		printk(BIOS_ERR, "Unknown MCH ID: 0x%4x, skipping VccInAuxImonIccMax config\n",
 			mch_id);
@@ -1008,15 +1023,19 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->VrPowerDeliveryDesign = config->vr_power_delivery_design;
 
 	/* FIXME: Disable package C state demotion on Raptorlake as a W/A for S0ix issues */
-	if ((cpu_id == CPUID_RAPTORLAKE_P_J0) || (cpu_id == CPUID_RAPTORLAKE_P_Q0))
+	if ((cpu_id == CPUID_RAPTORLAKE_J0) || (cpu_id == CPUID_RAPTORLAKE_Q0))
 		s_cfg->PkgCStateDemotion = 0;
 	else
 		s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
 
-	if (cpu_id == CPUID_RAPTORLAKE_P_J0 || cpu_id == CPUID_RAPTORLAKE_P_Q0)
+	if (cpu_id == CPUID_RAPTORLAKE_J0 || cpu_id == CPUID_RAPTORLAKE_Q0)
 		s_cfg->C1e = 0;
 	else
 		s_cfg->C1e = 1;
+
+#if CONFIG(SOC_INTEL_RAPTORLAKE)
+	s_cfg->EnableHwpScalabilityTracking = config->enable_hwp_scalability_tracking;
+#endif
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,

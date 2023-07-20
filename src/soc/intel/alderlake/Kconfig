@@ -378,16 +378,15 @@ config VBOOT_HASH_BLOCK_SIZE
 	default 0x1000
 
 config CBFS_SIZE
-	default 0x200000
+	default 0x400000
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x16000 if CONSOLE_SERIAL
 	default 0x4000
 
 config CONSOLE_CBMEM_BUFFER_SIZE
 	hex
-	default 0x100000 if CONSOLE_SERIAL
+	default 0x100000 if BUILDING_WITH_DEBUG_FSP
 	default 0x40000
 
 config FSP_TYPE_IOT

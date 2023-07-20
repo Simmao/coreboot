@@ -65,12 +65,13 @@ PHOENIX_FWM_POSITION=0xff020000
 AMD_FW_AB_POSITION := 0x40
 
 PHOENIX_FW_A_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_A_START) $(AMD_FW_AB_POSITION))
 
 PHOENIX_FW_B_POSITION=$(call int-add, \
-	$(shell awk '$$2 == "FMAP_SECTION_FW_MAIN_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(AMD_FW_AB_POSITION))
+	$(call get_fmap_value,FMAP_SECTION_FW_MAIN_B_START) $(AMD_FW_AB_POSITION))
+
+FMAP_FLASH_START=$(call get_fmap_value,FMAP_SECTION_FLASH_START)
+
 #
 # PSP Directory Table items
 #
@@ -132,21 +133,23 @@ PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | 
 
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
-APOB_NV_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_BASE=$(shell awk '$$2 == "FMAP_SECTION_RW_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
+APOB_NV_BASE=$(call _tohex,$(call int-subtract, \
+	$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_START) $(FMAP_FLASH_START)))
 
 ifeq ($(CONFIG_HAS_RECOVERY_MRC_CACHE),y)
 # On boards with recovery MRC cache, point type 0x63 entry to RECOVERY_MRC_CACHE.
 # Else use RW_MRC_CACHE. This entry will be added in the RO section.
-APOB_NV_RO_SIZE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE" {print $$3}' $(obj)/fmap_config.h)
-APOB_NV_RO_BASE=$(shell awk '$$2 == "FMAP_SECTION_RECOVERY_MRC_CACHE_START" {print $$3}' $(obj)/fmap_config.h)
+APOB_NV_RO_SIZE=$(call get_fmap_value,FMAP_SECTION_RECOVERY_MRC_CACHE_SIZE)
+APOB_NV_RO_BASE=$(call _tohex,$(call int-subtract, \
+	$(call get_fmap_value,FMAP_SECTION_RECOVERY_MRC_CACHE_START) $(FMAP_FLASH_START)))
 else
 APOB_NV_RO_SIZE=$(APOB_NV_SIZE)
 APOB_NV_RO_BASE=$(APOB_NV_BASE)
 endif
 
 ifeq ($(CONFIG_AMDFW_SPLIT),y)
-FMAP_AMDFW_BODY_LOCATION=$(shell awk '$$2 == "FMAP_SECTION_AMDFWBODY_START" {print $$3}' $(obj)/fmap_config.h)
+FMAP_AMDFW_BODY_LOCATION=$(call get_fmap_value,FMAP_SECTION_AMDFWBODY_START)
 endif
 
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
@@ -163,11 +166,9 @@ endif # CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK
 
 ifeq ($(CONFIG_SEPARATE_SIGNED_PSPFW),y)
 SIGNED_AMDFW_A_POSITION=$(call int-subtract, \
-	$(shell awk '$$2 == "FMAP_SECTION_SIGNED_AMDFW_A_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(shell awk '$$2 == "FMAP_SECTION_FLASH_START" {print $$3}' $(obj)/fmap_config.h))
+	$(call get_fmap_value,FMAP_SECTION_SIGNED_AMDFW_A_START) $(FMAP_FLASH_START))
 SIGNED_AMDFW_B_POSITION=$(call int-subtract, \
-	$(shell awk '$$2 == "FMAP_SECTION_SIGNED_AMDFW_B_START" {print $$3}' $(obj)/fmap_config.h) \
-	$(shell awk '$$2 == "FMAP_SECTION_FLASH_START" {print $$3}' $(obj)/fmap_config.h))
+	$(call get_fmap_value,FMAP_SECTION_SIGNED_AMDFW_B_START) $(FMAP_FLASH_START))
 SIGNED_AMDFW_A_FILE=$(obj)/amdfw_a.rom.signed
 SIGNED_AMDFW_B_FILE=$(obj)/amdfw_b.rom.signed
 endif # CONFIG_SEPARATE_SIGNED_PSPFW
@@ -262,7 +263,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
-		--location $(shell printf "%#x" $(PHOENIX_FWM_POSITION)) \
+		--location $(call _tohex,$(PHOENIX_FWM_POSITION)) \
 		--output $@
 
 ifeq ($(CONFIG_AMDFW_SPLIT),y)
@@ -287,7 +288,7 @@ $(obj)/amdfw_a.rom: $(obj)/amdfw.rom
 		$(OPT_SPL_RW_AB_TABLE_FILE) \
 		$(OPT_SIGNED_AMDFW_A_POSITION) \
 		$(OPT_SIGNED_AMDFW_A_FILE) \
-		--location $(shell printf "%#x" $(PHOENIX_FW_A_POSITION)) \
+		--location $(call _tohex,$(PHOENIX_FW_A_POSITION)) \
 		--anywhere \
 		--output $@
 
@@ -301,7 +302,7 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		$(OPT_SPL_RW_AB_TABLE_FILE) \
 		$(OPT_SIGNED_AMDFW_B_POSITION) \
 		$(OPT_SIGNED_AMDFW_B_FILE) \
-		--location $(shell printf "%#x" $(PHOENIX_FW_B_POSITION)) \
+		--location $(call _tohex,$(PHOENIX_FW_B_POSITION)) \
 		--anywhere \
 		--output $@
 

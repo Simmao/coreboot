@@ -121,8 +121,8 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF(GPP_C08, NONE, DEEP, NF2),
 	/* GPP_C09 : [] ==> MISC_SYNC_IN */
 	PAD_NC(GPP_C09, NONE),
-	/* GPP_C10 : [] ==> LAN0_CLKREQ_ODL */
-	PAD_NC(GPP_C10, NONE),
+	/* GPP_C10 : [] ==> EN_LAN_RAILS */
+	PAD_CFG_GPO(GPP_C10, 1, DEEP),
 	/* GPP_C11 : [] ==> SD_CLKREQ_ODL */
 	PAD_CFG_NF(GPP_C11, NONE, DEEP, NF1),
 	/* GPP_C12 : [] ==> WWAN_CLKREQ_ODL */
@@ -188,8 +188,8 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPI_APIC_LOCK(GPP_D18, NONE, LEVEL, INVERT, LOCK_CONFIG),
 	/* GPP_D19 : [] ==> SSD_CLKREQ_ODL */
 	PAD_CFG_NF(GPP_D19, NONE, DEEP, NF1),
-	/* GPP_D20 : [] ==> EN_LAN_RAILS */
-	PAD_NC(GPP_D20, NONE),
+	/* GPP_D20 : [] ==> LAN_CLKREQ_ODL */
+	PAD_CFG_NF(GPP_D20, NONE, DEEP, NF1),
 	/* GPP_D21 : [] ==> WLAN_CLKREQ_ODL */
 	PAD_CFG_NF(GPP_D21, NONE, DEEP, NF2),
 	/* GPP_D22 : [] ==> NC */
@@ -237,17 +237,17 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPO(GPP_E22, 1, DEEP),
 
 	/* GPP_F00 : [] ==> CNV_BRI_DT_R */
-	PAD_CFG_NF(GPP_F00, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F00, NONE, DEEP, NF1),
 	/* GPP_F01 : [] ==> CNV_BRI_RSP */
-	PAD_CFG_NF(GPP_F01, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F01, UP_20K, DEEP, NF1),
 	/* GPP_F02 : [] ==> CNV_RGI_DT_R */
-	PAD_CFG_NF(GPP_F02, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F02, NONE, DEEP, NF1),
 	/* GPP_F03 : [] ==> CNV_RGI_RSP */
-	PAD_CFG_NF(GPP_F03, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F03, UP_20K, DEEP, NF1),
 	/* GPP_F04 : [] ==> CNV_RF_RST_L */
-	PAD_CFG_NF(GPP_F04, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F04, NONE, DEEP, NF1),
 	/* GPP_F05 : [] ==> WLAN_CNVI_CLKREQ_ODL */
-	PAD_CFG_NF(GPP_F05, NONE, DEEP, NF3),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F05, NONE, DEEP, NF3),
 	/* GPP_F06 : [] ==> WWAN_WLAN_COEX3 */
 	PAD_NC(GPP_F06, NONE),
 	/* GPP_F07 : [] ==> UCAM_MCLK_R */
@@ -366,7 +366,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_V11 : [] ==> SOC_GPP_V11 */
 	PAD_NC(GPP_V11, NONE),
 	/* GPP_V12 : [] ==> SOC_SLP_LAN_L */
-	PAD_CFG_NF(GPP_F17, NONE, DEEP, NF8),
+	PAD_CFG_NF(GPP_V12, NONE, DEEP, NF1),
 	/* GPP_V14 : [] ==> SOC_WAKE_L */
 	PAD_NC(GPP_V14, NONE),
 	/* GPP_V22 : [] ==> WCAM_RST_L */
@@ -398,15 +398,23 @@ static const struct pad_config early_gpio_table[] = {
 	/* GPP_A20 : [] ==> SSD_PERST_L */
 	PAD_CFG_GPO(GPP_A20, 0, DEEP),
 
+	/* GPP_C13 : [] ==> LAN_PERST_L */
+	PAD_CFG_GPO(GPP_C13, 0, DEEP),
+
 	/* GPP_H10 : [] ==> SOC_WP_OD */
 	PAD_CFG_GPI_GPIO_DRIVER_LOCK(GPP_H10, NONE, LOCK_CONFIG),
+
+	/* GPP_D02 : [] ==> SD_PERST_L */
+	PAD_CFG_GPO(GPP_D02, 0, DEEP),
 };
 
 static const struct pad_config romstage_gpio_table[] = {
+	/* GPP_C13 : [] ==> LAN_PERST_L */
+	PAD_CFG_GPO(GPP_C13, 0, DEEP),
 	/* A20 : [] ==> SSD_PERST_L */
 	PAD_CFG_GPO(GPP_A20, 0, DEEP),
 	/* GPP_D02 : [] ==> SD_PERST_L */
-	PAD_CFG_GPO(GPP_D02, 1, DEEP),
+	PAD_CFG_GPO(GPP_D02, 0, DEEP),
 };
 
 const struct pad_config *variant_gpio_table(size_t *num)

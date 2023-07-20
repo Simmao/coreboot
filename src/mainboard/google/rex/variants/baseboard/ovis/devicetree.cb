@@ -33,8 +33,14 @@ chip soc/intel/meteorlake
 	# S0ix enable
 	register "s0ix_enable" = "1"
 
+	# Enable Energy Reporting
+	register "pch_pm_energy_report_enable" = "1"
+
 	# DPTF enable
 	register "dptf_enable" = "1"
+
+	# Temporary setting TCC of 100C = Tj max (110) - TCC_Offset (10)
+	register "tcc_offset" = "10"
 
 	# Enable CNVi BT
 	register "cnvi_bt_core" = "true"

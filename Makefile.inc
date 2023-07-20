@@ -23,7 +23,7 @@ ifeq ($(BUILD_TIMELESS),1)
 KERNELVERSION := -TIMELESS--LESSTIME-
 else
 KERNELVERSION := $(strip $(if $(GIT),\
-	$(shell git describe --dirty --always || git describe),\
+	$(shell git describe --abbrev=12 --dirty --always || git describe),\
 	$(if $(wildcard $(top)/.coreboot-version),\
 		$(shell cat $(top)/.coreboot-version),\
 		coreboot-unknown$(KERNELREVISION))))
@@ -146,6 +146,7 @@ $(foreach supported_arch,$(ARCH_SUPPORTED), \
 # tolower:        returns the value in all lowercase
 # toupper:        returns the value in all uppercase
 # ws_to_under:    returns the value with any whitespace changed to underscores
+# get_fmap_value  returns the value of a given FMAP field from fmap_config.h
 _toint=$(shell printf "%d" $1)
 _tohex=$(shell printf 0x"%x" $1)
 _int-add2=$(shell expr $(call _toint,$1) + $(call _toint,$2))
@@ -165,6 +166,7 @@ file-size=$(strip $(shell wc -c "$1" | cut -f 1 -d ' '))
 tolower=$(shell echo '$1' | tr '[:upper:]' '[:lower:]')
 toupper=$(shell echo '$1' | tr '[:lower:]' '[:upper:]')
 ws_to_under=$(shell echo '$1' | tr ' \t' '_')
+get_fmap_value=$(shell awk '$$2 == "$1" {print $$3}' $(obj)/fmap_config.h)
 
 #######################################################################
 # Helper functions for ramstage postprocess
@@ -612,6 +614,8 @@ AMDFWREAD:=$(objutil)/amdfwtool/amdfwread
 APCB_EDIT_TOOL:=$(top)/util/apcb/apcb_edit.py
 
 APCB_V3_EDIT_TOOL:=$(top)/util/apcb/apcb_v3_edit.py
+
+APCB_V3A_EDIT_TOOL:=$(top)/util/apcb/apcb_v3a_edit.py
 
 CBOOTIMAGE:=$(objutil)/cbootimage/cbootimage
 

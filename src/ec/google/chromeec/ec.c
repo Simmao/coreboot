@@ -1213,8 +1213,15 @@ static int google_chromeec_usb_pd_get_info(int port, bool *ufp, bool *dbg_acc,
 
 int google_chromeec_typec_control_enter_dp_mode(int port)
 {
+	int ret;
+	struct usbc_mux_info mux_info;
+
 	if (!google_chromeec_check_feature(EC_FEATURE_TYPEC_REQUIRE_AP_MODE_ENTRY))
 		return 0;
+
+	ret = google_chromeec_get_usbc_mux_info(port, &mux_info);
+	if ((ret < 0) || (!mux_info.usb))
+		return -1;
 
 	const struct ec_params_typec_control typec_control = {
 		.port = port,
@@ -1345,6 +1352,11 @@ int google_chromeec_wait_for_displayport(long timeout_ms)
 	struct stopwatch sw;
 	int ret = 0;
 
+	if (google_chromeec_check_feature(EC_FEATURE_TYPEC_REQUIRE_AP_MODE_ENTRY)) {
+		printk(BIOS_INFO, "AP Mode Entry enabled, skip waiting for DisplayPort connection\n");
+		return -1;
+	}
+
 	printk(BIOS_INFO, "Waiting for DisplayPort\n");
 	stopwatch_init_msecs_expire(&sw, timeout_ms);
 	while (1) {
@@ -1371,20 +1383,69 @@ int google_chromeec_wait_for_displayport(long timeout_ms)
 	return ret;
 }
 
-int google_chromeec_wait_for_dp_hpd(int port, long timeout_ms)
+/**
+ * Check for given flag in PD mux info for a port.
+ *
+ * @param port  Type-C port number
+ *        flag  Flag to check
+ * @return	1: Flag is set. 0: Flag is not set.
+ */
+static int google_chromeec_check_mux_flag(int port, uint8_t flag)
 {
-	uint8_t mux_flags;
+	uint8_t mux_flags = 0;
+	google_chromeec_usb_get_pd_mux_info(port, &mux_flags);
+	if ((mux_flags & flag) == flag)
+		return 1;
+	return 0;
+}
+
+int google_chromeec_wait_for_dp_mode_entry(int port, long timeout_ms)
+{
 	struct stopwatch sw;
 
+	if (!google_chromeec_check_feature(EC_FEATURE_TYPEC_REQUIRE_AP_MODE_ENTRY)) {
+		if (!google_chromeec_check_mux_flag(port, USB_PD_MUX_DP_ENABLED)) {
+			printk(BIOS_WARNING, "DP mode entry is not ready. Abort.\n");
+			return -1;
+		}
+
+		return 0;
+	}
+
 	stopwatch_init_msecs_expire(&sw, timeout_ms);
-	do {
-		google_chromeec_usb_get_pd_mux_info(port, &mux_flags);
+	while (!google_chromeec_check_mux_flag(port, USB_PD_MUX_DP_ENABLED)) {
+		if (stopwatch_expired(&sw)) {
+			printk(BIOS_WARNING, "DP not ready after %ldms. Abort.\n", timeout_ms);
+			return -1;
+		}
+		mdelay(100);
+	}
+	printk(BIOS_INFO, "DP ready after %lld ms\n", stopwatch_duration_msecs(&sw));
+
+	return 0;
+}
+
+int google_chromeec_wait_for_hpd(int port, long timeout_ms)
+{
+	struct stopwatch sw;
+
+	if (!google_chromeec_check_feature(EC_FEATURE_TYPEC_REQUIRE_AP_MODE_ENTRY)) {
+		if (!google_chromeec_check_mux_flag(port, USB_PD_MUX_HPD_LVL)) {
+			printk(BIOS_WARNING, "HPD not ready. Abort.\n");
+			return -1;
+		}
+
+		return 0;
+	}
+
+	stopwatch_init_msecs_expire(&sw, timeout_ms);
+	while (!google_chromeec_check_mux_flag(port, USB_PD_MUX_HPD_LVL)) {
 		if (stopwatch_expired(&sw)) {
 			printk(BIOS_WARNING, "HPD not ready after %ldms. Abort.\n", timeout_ms);
 			return -1;
 		}
 		mdelay(100);
-	} while (!(mux_flags & USB_PD_MUX_HPD_LVL) || !(mux_flags & USB_PD_MUX_DP_ENABLED));
+	}
 	printk(BIOS_INFO, "HPD ready after %lld ms\n", stopwatch_duration_msecs(&sw));
 
 	return 0;

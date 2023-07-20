@@ -63,6 +63,7 @@ config CPU_SPECIFIC_OPTIONS
 	select MP_SERVICES_PPI_V2
 	select MRC_SETTINGS_PROTECT
 	select PARALLEL_MP_AP_WORK
+	select PCIE_CLOCK_CONTROL_THROUGH_P2SB
 	select PLATFORM_USES_FSP2_3
 	select PMC_GLOBAL_RESET_ENABLE_LOCK
 	select SOC_INTEL_COMMON
@@ -236,6 +237,12 @@ config PCR_BASE_ADDRESS
 	help
 	  This option allows you to select MMIO Base Address of sideband bus.
 
+config IOE_PCR_BASE_ADDRESS
+	hex
+	default 0x3fff0000000
+	help
+	  This option allows you to select MMIO Base Address of IOE sideband bus.
+
 config ECAM_MMCONF_BASE_ADDRESS
 	default 0xc0000000
 
@@ -322,7 +329,6 @@ config CBFS_SIZE
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x16000 if BUILDING_WITH_DEBUG_FSP
 	default 0x2000
 
 config CONSOLE_CBMEM_BUFFER_SIZE
@@ -417,5 +423,9 @@ config PCIE_LTR_MAX_NO_SNOOP_LATENCY
 	default 0x100f
 	help
 	  Latency tolerance reporting, max non-snoop latency value defaults to 15.73 ms.
+
+config IOE_DIE_CLOCK_START
+	int
+	default 6 if SOC_INTEL_METEORLAKE_U_H
 
 endif

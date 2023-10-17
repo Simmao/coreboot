@@ -94,6 +94,20 @@ enum lpm_state_mask {
 		     | LPM_S0i3_0 | LPM_S0i3_1 | LPM_S0i3_2 | LPM_S0i3_3 | LPM_S0i3_4,
 };
 
+/*
+ * As per definition from FSP header:
+ * - [0] for IA
+ * - [1] for GT
+ * - [2] for SA
+ * - [3] through [5] are reserved
+ */
+enum vr_domain {
+	VR_DOMAIN_IA,
+	VR_DOMAIN_GT,
+	VR_DOMAIN_SA,
+	NUM_VR_DOMAINS
+};
+
 struct soc_intel_meteorlake_config {
 
 	/* Common struct containing soc config data required by common code */
@@ -245,6 +259,29 @@ struct soc_intel_meteorlake_config {
 	/* Enable/Disable EIST. 1b:Enabled, 0b:Disabled */
 	uint8_t eist_enable;
 
+	/*
+	 * When enabled, this feature makes the SoC throttle when the power
+	 * consumption exceeds the I_TRIP threshold.
+	 *
+	 * FSPs sets a by default I_TRIP threshold adapted to the current SoC
+	 * and assuming a Voltage Regulator error accuracy of 6.5%.
+	 */
+	bool enable_fast_vmode[NUM_VR_DOMAINS];
+
+	/*
+	 * Current Excursion Protection needs to be set for each VR domain
+	 * in order to be able to enable fast Vmode.
+	 */
+	bool cep_enable[NUM_VR_DOMAINS];
+
+	/*
+	 * VR Fast Vmode I_TRIP threshold.
+	 * 0-255A in 1/4 A units. Example: 400 = 100A
+	 * This setting overrides the default value set by FSPs when Fast VMode
+	 * is enabled.
+	 */
+	uint16_t fast_vmode_i_trip[NUM_VR_DOMAINS];
+
 	uint8_t PmTimerDisabled;
 	/*
 	 * SerialIO device mode selection:
@@ -369,9 +406,21 @@ struct soc_intel_meteorlake_config {
 	uint8_t lan_clk;
 
 	/*
+	 * Enable or Disable C1 C-state Auto Demotion & un-demotion
+	 * The algorithm looks at the behavior of the wake up tracker, how
+	 * often it is waking up, and based on that it demote the c-state.
+	 * Default 0. Set this to 1 in order to disable C1-state auto demotion.
+	 * NOTE: Un-Demotion from Demoted C1 needs to be disabled when
+	 *       C1 C-state Auto Demotion is disabled.
+	 */
+	bool disable_c1_state_auto_demotion;
+
+	/*
 	 * Enable or Disable Package C-state Demotion.
 	 * Default is set to 0.
 	 * Set this to 1 in order to disable Package C-state demotion.
+	 * NOTE: Un-Demotion from demoted Package C-state needs to be disabled
+	 *       when auto demotion is disabled.
 	 */
 	bool disable_package_c_state_demotion;
 
@@ -392,6 +441,13 @@ struct soc_intel_meteorlake_config {
 
 	/* Gear Selection for SAGV points. 0: Auto, 1: Gear 1, 2: Gear 2, 4: Gear 4 */
 	uint8_t sagv_gear[MAX_SAGV_POINTS];
+
+	/*
+	 * Enable or Disable Reduced BasicMemoryTest size.
+	 * Default is set to 0.
+	 * Set this to 1 in order to reduce BasicMemoryTest size
+	 */
+	bool lower_basic_mem_test_size;
 };
 
 typedef struct soc_intel_meteorlake_config config_t;

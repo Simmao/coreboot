@@ -75,6 +75,7 @@ The boards in this section are not real mainboards, but emulators.
 ## HP
 
 - [Compaq 8200 Elite SFF](hp/compaq_8200_sff.md)
+- [Compaq Elite 8300 USDT](hp/compaq_8300_usdt.md)
 - [Z220 Workstation SFF](hp/z220_sff.md)
 
 ### EliteBook series
@@ -85,6 +86,7 @@ The boards in this section are not real mainboards, but emulators.
 - [EliteBook 2560p](hp/2560p.md)
 - [EliteBook 8760w](hp/8760w.md)
 - [EliteBook Folio 9480m](hp/folio_9480m.md)
+- [EliteBook 820 G2](hp/elitebook_820_g2.md)
 
 ## Intel
 
@@ -123,8 +125,7 @@ The boards in this section are not real mainboards, but emulators.
 ### Ivy Bridge series
 
 - [T430](lenovo/t430.md)
-- [T530](lenovo/w530.md)
-- [W530](lenovo/w530.md)
+- [T530 / W530](lenovo/w530.md)
 - [T430 / T530 / X230 / W530 common](lenovo/Ivy_Bridge_series.md)
 - [T431s](lenovo/t431s.md)
 - [X230s](lenovo/x230s.md)
@@ -207,6 +208,7 @@ The boards in this section are not real mainboards, but emulators.
 - [Adder Workstation 2](system76/addw2.md)
 - [Adder Workstation 3](system76/addw3.md)
 - [Bonobo Workstation 14](system76/bonw14.md)
+- [Bonobo Workstation 15](system76/bonw15.md)
 - [Darter Pro 6](system76/darp6.md)
 - [Darter Pro 7](system76/darp7.md)
 - [Darter Pro 8](system76/darp8.md)
@@ -222,6 +224,7 @@ The boards in this section are not real mainboards, but emulators.
 - [Lemur Pro 9](system76/lemp9.md)
 - [Lemur Pro 10](system76/lemp10.md)
 - [Lemur Pro 11](system76/lemp11.md)
+- [Lemur Pro 12](system76/lemp12.md)
 - [Oryx Pro 5](system76/oryp5.md)
 - [Oryx Pro 6](system76/oryp6.md)
 - [Oryx Pro 7](system76/oryp7.md)

@@ -85,7 +85,7 @@ help_coreboot help::
 	@echo  '  clean                 - Remove coreboot build artifacts'
 	@echo  '  distclean             - Remove build artifacts and config files'
 	@echo  '  sphinx                - Build sphinx documentation for coreboot'
-	@echo  '  sphinx-lint           - Build sphinx documenttion for coreboot with warnings as errors'
+	@echo  '  sphinx-lint           - Build sphinx documentation for coreboot with warnings as errors'
 	@echo  '  filelist              - Show files used in current build'
 	@echo  '  printall              - print makefile info for debugging'
 	@echo  '  gitconfig             - set up git to submit patches to coreboot'
@@ -273,17 +273,18 @@ src-to-ali=\
 # Add paths to files in X-y to X-srcs
 # Add subdirs-y to subdirs
 includemakefiles= \
-	$(foreach class,classes subdirs $(classes) $(special-classes), $(eval $(class)-y:=)) \
-	$(eval -include $(1)) \
-	$(foreach class,$(classes-y), $(call add-class,$(class))) \
-	$(foreach special,$(special-classes), \
-		$(foreach item,$($(special)-y), $(call $(special)-handler,$(dir $(1)),$(item)))) \
-	$(foreach class,$(classes), \
-		$(eval $(class)-srcs+= \
-			$$(subst $(absobj)/,$(obj)/, \
-			$$(subst $(top)/,, \
-			$$(abspath $$(subst $(dir $(1))/,/,$$(addprefix $(dir $(1)),$$($(class)-y)))))))) \
-	$(eval subdirs+=$$(subst $(CURDIR)/,,$$(wildcard $$(abspath $$(addprefix $(dir $(1)),$$(subdirs-y))))))
+	$(if $(wildcard $(1)), \
+		$(foreach class,classes subdirs $(classes) $(special-classes), $(eval $(class)-y:=)) \
+		$(eval -include $(1)) \
+		$(foreach class,$(classes-y), $(call add-class,$(class))) \
+		$(foreach special,$(special-classes), \
+			$(foreach item,$($(special)-y), $(call $(special)-handler,$(dir $(1)),$(item)))) \
+		$(foreach class,$(classes), \
+			$(eval $(class)-srcs+= \
+				$$(subst $(absobj)/,$(obj)/, \
+				$$(subst $(top)/,, \
+				$$(abspath $$(subst $(dir $(1))/,/,$$(addprefix $(dir $(1)),$$($(class)-y)))))))) \
+		$(eval subdirs+=$$(subst $(CURDIR)/,,$$(wildcard $$(abspath $$(addprefix $(dir $(1)),$$(subdirs-y)))))))
 
 # For each path in $(subdirs) call includemakefiles
 # Repeat until subdirs is empty
@@ -314,6 +315,11 @@ $(eval $(postinclude-hooks))
 
 # Eliminate duplicate mentions of source files in a class
 $(foreach class,$(classes),$(eval $(class)-srcs:=$(sort $($(class)-srcs))))
+
+ifeq ($(CONFIG_IWYU),y)
+MAKEFLAGS += -k
+SAVE_IWYU_OUTPUT := 2>&1 | grep "should\|\#include\|---\|include-list\|^[[:blank:]]\?\'" | tee -a $$(obj)/iwyu.txt
+endif
 
 # Build Kconfig .ads if necessary
 ifeq ($(CONFIG_ROMSTAGE_ADA),y)
@@ -381,7 +387,7 @@ $$(call src-to-obj,$1,$$(1).$2): $$(1).$2 $(KCONFIG_AUTOHEADER) $(4)
 	@printf "    CC         $$$$(subst $$$$(obj)/,,$$$$(@))\n"
 	$(CC_$(1)) \
 		-MMD $$$$(CPPFLAGS_$(1)) $$$$(CFLAGS_$(1)) -MT $$$$(@) \
-		$(3) -c -o $$$$@ $$$$<
+		$(3) -c -o $$$$@ $$$$< $(SAVE_IWYU_OUTPUT)
 end$(EMPTY)if
 en$(EMPTY)def
 end$(EMPTY)if
@@ -462,10 +468,10 @@ cscope:
 	cscope -bR
 
 sphinx:
-	$(MAKE) -C Documentation -f Makefile.sphinx html
+	$(MAKE) -C Documentation sphinx
 
 sphinx-lint:
-	$(MAKE) SPHINXOPTS=-W -C Documentation -f Makefile.sphinx html
+	$(MAKE) SPHINXOPTS=-W -C Documentation sphinx
 
 symlink:
 	@echo "Creating Symbolic Links.."; \

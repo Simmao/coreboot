@@ -28,7 +28,7 @@ _cache_as_ram_setup:
 .global bootblock_pre_c_entry
 bootblock_pre_c_entry:
 
-	post_code(POST_BOOTBLOCK_PRE_C_ENTRY)
+	post_code(POSTCODE_BOOTBLOCK_PRE_C_ENTRY)
 
 	AMD_ENABLE_STACK
 
@@ -41,8 +41,11 @@ bootblock_pre_c_entry:
 	movd	%mm1, %eax
 	pushl	%eax		/* tsc[31:0] */
 
+	/* Copy .data section content to Cache-As-Ram */
+#include <cpu/x86/copy_data_section.inc>
+
 before_carstage:
-	post_code(POST_BOOTBLOCK_PRE_C_DONE)
+	post_code(POSTCODE_BOOTBLOCK_PRE_C_DONE)
 
 	call	bootblock_c_entry
 	/* Never reached */

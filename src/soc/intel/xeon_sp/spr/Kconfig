@@ -1,14 +1,21 @@
 ## SPDX-License-Identifier: GPL-2.0-only
 
-if SOC_INTEL_SAPPHIRERAPIDS_SP
-
-config SOC_SPECIFIC_OPTIONS
-	def_bool y
+config SOC_INTEL_SAPPHIRERAPIDS_SP
+	bool
+	select FSP_NVS_DATA_POST_SILICON_INIT
 	select MICROCODE_BLOB_NOT_HOOKED_UP
-	select SAVE_MRC_AFTER_FSPS
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
 	select DISABLE_ACPI_HIBERNATE
 	select DEFAULT_X2APIC_RUNTIME
+	select CACHE_MRC_SETTINGS
+	select CPU_INTEL_TURBO_NOT_PACKAGE_SCOPED
+	select PLATFORM_USES_FSP2_3
+	select SOC_INTEL_CSE_SERVER_SKU
+	select XEON_SP_COMMON_BASE
+	help
+	  Intel Sapphire Rapids-SP support
+
+if SOC_INTEL_SAPPHIRERAPIDS_SP
 
 config CHIPSET_DEVICETREE
 	string
@@ -26,10 +33,6 @@ config MAX_CPUS
 config ACPI_CPU_STRING
 	string
 	default "C%03X"
-
-config SIPI_FINAL_TIMEOUT
-	int
-	default 400000
 
 config PCR_BASE_ADDRESS
 	hex
@@ -75,10 +78,6 @@ config CPU_MICROCODE_CBFS_LOC
 config CPU_MICROCODE_CBFS_LEN
 	hex
 	default 0x8c00
-
-config HEAP_SIZE
-	hex
-	default 0x80000
 
 config STACK_SIZE
 	hex
@@ -131,10 +130,6 @@ config MAX_IMC
 	int
 	default 4
 
-config MAX_MC_CHN
-	int
-	default 2
-
 config DIMM_MAX
 	int
 	default 32
@@ -146,7 +141,7 @@ config DIMM_SPD_SIZE
 
 config MAX_ACPI_TABLE_SIZE_KB
 	int
-	default 400 if MAX_SOCKET = 4
+	default 512 if MAX_SOCKET = 4
 	default 224
 
 config FIXED_SMBUS_IO_BASE

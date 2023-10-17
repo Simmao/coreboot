@@ -610,7 +610,7 @@ int heci_reset(void)
 	uint32_t csr;
 
 	/* Clear post code to prevent eventlog entry from unknown code. */
-	post_code(POST_CODE_ZERO);
+	post_code(POSTCODE_CODE_ZERO);
 
 	/* Send reset request */
 	csr = read_host_csr();
@@ -1420,15 +1420,15 @@ void cse_late_finalize(void)
 
 static void intel_cse_get_rw_version(void)
 {
-	struct cse_fw_partition_info *version = cbmem_find(CBMEM_ID_CSE_PARTITION_VERSION);
-	if (version == NULL)
+	struct cse_specific_info *info = cbmem_find(CBMEM_ID_CSE_INFO);
+	if (info == NULL)
 		return;
 
 	printk(BIOS_DEBUG, "CSE RW Firmware Version: %d.%d.%d.%d\n",
-		version->cur_cse_fw_version.major,
-		version->cur_cse_fw_version.minor,
-		version->cur_cse_fw_version.hotfix,
-		version->cur_cse_fw_version.build);
+		info->cse_fwp_version.cur_cse_fw_version.major,
+		info->cse_fwp_version.cur_cse_fw_version.minor,
+		info->cse_fwp_version.cur_cse_fw_version.hotfix,
+		info->cse_fwp_version.cur_cse_fw_version.build);
 }
 
 /*

@@ -158,8 +158,6 @@ static void add_fixed_resources(struct device *dev, int index)
 
 static void nb_read_resources(struct device *dev)
 {
-	struct resource *res;
-
 	/*
 	 * This MMCONF resource must be reserved in the PCI domain.
 	 * It is not honored by the coreboot resource allocator if it is in
@@ -168,10 +166,7 @@ static void nb_read_resources(struct device *dev)
 	mmconf_resource(dev, MMIO_CONF_BASE);
 
 	/* NB IOAPIC2 resource */
-	res = new_resource(dev, IO_APIC2_ADDR); /* IOAPIC2 */
-	res->base = IO_APIC2_ADDR;
-	res->size = 0x00001000;
-	res->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+	mmio_range(dev, IO_APIC2_ADDR, IO_APIC2_ADDR, 0x1000);
 
 	add_fixed_resources(dev, 0);
 }
@@ -849,21 +844,11 @@ static struct device_operations pci_domain_ops = {
 	.acpi_name        = domain_acpi_name,
 };
 
-static void pre_mp_init(void)
-{
-	x86_setup_mtrrs_with_detect();
-	x86_mtrr_check();
-}
-
-static const struct mp_ops mp_ops = {
-	.pre_mp_init = pre_mp_init,
-	.get_cpu_count = get_cpu_count,
-};
-
 void mp_init_cpus(struct bus *cpu_bus)
 {
+	extern const struct mp_ops amd_mp_ops_no_smm;
 	/* TODO: Handle mp_init_with_smm failure? */
-	mp_init_with_smm(cpu_bus, &mp_ops);
+	mp_init_with_smm(cpu_bus, &amd_mp_ops_no_smm);
 
 	/* The flash is now no longer cacheable. Reset to WP for performance. */
 	mtrr_use_temp_range(OPTIMAL_CACHE_ROM_BASE, OPTIMAL_CACHE_ROM_SIZE,

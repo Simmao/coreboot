@@ -189,7 +189,6 @@ Device (PDRC)
 
 	Name (PDRS, ResourceTemplate() {
 		Memory32Fixed(ReadWrite, ABORT_BASE_ADDRESS, ABORT_BASE_SIZE)
-		Memory32Fixed(ReadWrite, CONFIG_ECAM_MMCONF_BASE_ADDRESS, CONFIG_ECAM_MMCONF_LENGTH)
 		Memory32Fixed(ReadWrite, PMC_BASE_ADDRESS, PMC_BASE_SIZE)
 		Memory32Fixed(ReadWrite, ILB_BASE_ADDRESS, ILB_BASE_SIZE)
 		Memory32Fixed(ReadWrite, SPI_BASE_ADDRESS, SPI_BASE_SIZE)
@@ -240,6 +239,15 @@ Device (IOSF)
 		CreateDwordField (^RBUF, ^RBAR._BAS, RBAS)
 		RBAS = CONFIG_ECAM_MMCONF_BASE_ADDRESS + 0xD0
 		Return (^RBUF)
+	}
+
+	Method (_STA)
+	{
+#if CONFIG(CHROMEOS)
+		Return (0xF)
+#else
+		Return (0x0)
+#endif
 	}
 }
 

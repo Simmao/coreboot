@@ -89,6 +89,12 @@ Device (FUR0)
 		}
 	}
 
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
+	}
+
 	AOAC_DEVICE(FCH_AOAC_DEV_UART0, 0)
 }
 
@@ -118,6 +124,12 @@ Device (FUR1) {
 		} Else {
 			Return (Local0)
 		}
+	}
+
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_UART1, 0)
@@ -151,6 +163,12 @@ Device (FUR2) {
 		}
 	}
 
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
+	}
+
 	AOAC_DEVICE(FCH_AOAC_DEV_UART2, 0)
 }
 
@@ -180,6 +198,12 @@ Device (FUR3) {
 		} Else {
 			Return (Local0)
 		}
+	}
+
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_UART3, 0)
@@ -213,6 +237,12 @@ Device (FUR4) {
 		}
 	}
 
+	Name (STAT, 0x0)
+	Method (_STA, 0x0, NotSerialized)
+	{
+		Return (STAT)
+	}
+
 	AOAC_DEVICE(FCH_AOAC_DEV_UART4, 0)
 }
 
@@ -244,9 +274,10 @@ Device (I2C0) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C0, 0)
@@ -280,9 +311,10 @@ Device (I2C1) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C1, 0)
@@ -316,9 +348,10 @@ Device (I2C2) {
 		}
 	}
 
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 	AOAC_DEVICE(FCH_AOAC_DEV_I2C2, 0)
@@ -356,9 +389,11 @@ Device (I2C3)
 			Return (Local0)
 		}
 	}
+
+	Name (STAT, 0x0)
 	Method (_STA, 0x0, NotSerialized)
 	{
-		Return (0x0F)
+		Return (STAT)
 	}
 
 /* If this device is shared with PSP, then PSP takes care of power management */

@@ -14,6 +14,11 @@
 #define  SUS_PWR_FLR		(1 << 16)
 #define  PWR_FLR		(1 << 14)
 #define  HOST_RST_STS		(1 << 9)
+#define  PER_SMI_SEL_MASK	(3 << 1)
+#define    SMI_RATE_64S		(0 << 1)
+#define    SMI_RATE_32S		(1 << 1)
+#define    SMI_RATE_16S		(2 << 1)
+#define    SMI_RATE_8S		(3 << 1)
 #define  SLEEP_AFTER_POWER_FAIL	(1 << 0)
 #define GEN_PMCON_B		0x1024
 #define  SLP_STR_POL_LOCK	(1 << 18)
@@ -45,5 +50,7 @@
 #define  SCIS_IRQ23		7
 #define ST_PG_FDIS1		0x1e20
 #define  ST_FDIS_LK		(1 << 31)
+#define NST_PG_FDIS1		0x1e28
+#define  NST_FDIS_DSP		(1 << 23)
 
 #endif

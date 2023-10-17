@@ -46,20 +46,6 @@ CPPFLAGS_common += -I$(src)/soc/amd/phoenix/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/phoenix
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
-# ROMSIG Normally At ROMBASE + 0x20000
-# Overridden by CONFIG_AMD_FWM_POSITION_INDEX
-# +-----------+---------------+----------------+------------+
-# |0x55AA55AA |               |                |            |
-# +-----------+---------------+----------------+------------+
-# |           |  PSPDIR ADDR  |  BIOSDIR ADDR  |
-# +-----------+---------------+----------------+
-
-$(if $(CONFIG_AMD_FWM_POSITION_INDEX), ,\
-     $(error Invalid AMD firmware position index. Check if the board sets a valid ROM size))
-
-# Fixed EFS location
-PHOENIX_FWM_POSITION=0xff020000
-
 # 0x40 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
 # Building the cbfs image will fail if the offset isn't large enough
 AMD_FW_AB_POSITION := 0x40
@@ -106,13 +92,11 @@ PSP_WHITELIST_FILE=$(CONFIG_PSP_WHITELIST_FILE)
 endif
 
 # type = 0x55
-ifeq ($(CONFIG_HAVE_SPL_FILE),y)
 SPL_TABLE_FILE=$(CONFIG_SPL_TABLE_FILE)
 ifeq ($(CONFIG_HAVE_SPL_RW_AB_FILE),y)
 SPL_RW_AB_TABLE_FILE=$(CONFIG_SPL_RW_AB_TABLE_FILE)
 else
 SPL_RW_AB_TABLE_FILE=$(CONFIG_SPL_TABLE_FILE)
-endif
 endif
 
 #
@@ -131,6 +115,7 @@ PSP_ELF_FILE=$(objcbfs)/bootblock.elf
 PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
 PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
 
+ifneq ($(CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE),y)
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
 APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
@@ -147,6 +132,7 @@ else
 APOB_NV_RO_SIZE=$(APOB_NV_SIZE)
 APOB_NV_RO_BASE=$(APOB_NV_BASE)
 endif
+endif # !CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 
 ifeq ($(CONFIG_AMDFW_SPLIT),y)
 FMAP_AMDFW_BODY_LOCATION=$(call get_fmap_value,FMAP_SECTION_AMDFWBODY_START)
@@ -224,6 +210,9 @@ OPT_RECOVERY_AB_SINGLE_COPY=$(if $(CONFIG_VBOOT_SLOTS_RW_AB), --recovery-ab-sing
 
 OPT_AMDFW_BODY_LOCATION=$(call add_opt_prefix, $(FMAP_AMDFW_BODY_LOCATION), --body-location)
 
+MANIFEST_FILE=$(obj)/amdfw_manifest
+OPT_MANIFEST=$(call add_opt_prefix, $(MANIFEST_FILE), --output-manifest)
+
 AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_APOB_ADDR) \
 		$(OPT_DEBUG_AMDFWTOOL) \
@@ -263,7 +252,8 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
-		--location $(call _tohex,$(PHOENIX_FWM_POSITION)) \
+		$(OPT_MANIFEST) \
+		--location $(CONFIG_AMD_FWM_POSITION) \
 		--output $@
 
 ifeq ($(CONFIG_AMDFW_SPLIT),y)
@@ -307,6 +297,11 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 		--output $@
 
 
+$(MANIFEST_FILE): $(obj)/amdfw.rom
+cbfs-files-y += amdfw_manifest
+amdfw_manifest-file := $(MANIFEST_FILE)
+amdfw_manifest-type := raw
+
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_AB)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_a
 apu/amdfw_a-file := $(obj)/amdfw_a.rom
@@ -327,6 +322,18 @@ build_complete:: $(obj)/amdfw_a.rom $(obj)/amdfw_b.rom
 		-n apu/amdfw_a_hash -t raw
 	$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f $(obj)/amdfw_b.rom.signed.hash \
 		-n apu/amdfw_b_hash -t raw
+	if [ -n "$(wildcard $(obj)/amdfw_a.rom.signed.1.hash)" ]; then \
+		$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_A -f \
+			$(obj)/amdfw_a.rom.signed.1.hash -n apu/amdfw_a_hash1 -t raw; \
+		$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f \
+			$(obj)/amdfw_b.rom.signed.1.hash -n apu/amdfw_b_hash1 -t raw; \
+	fi
+	if [ -n "$(wildcard $(obj)/amdfw_a.rom.signed.2.hash)" ]; then \
+		$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_A -f \
+			$(obj)/amdfw_a.rom.signed.2.hash -n apu/amdfw_a_hash2 -t raw; \
+		$(CBFSTOOL) $(obj)/coreboot.rom add -r FW_MAIN_B -f \
+			$(obj)/amdfw_b.rom.signed.2.hash -n apu/amdfw_b_hash2 -t raw; \
+	fi
 endif # CONFIG_SEPARATE_SIGNED_PSPFW
 endif
 

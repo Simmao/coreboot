@@ -12,8 +12,8 @@
 #include <fmap.h>
 #include <fmap_config.h>
 #include <pc80/mc146818rtc.h>
+#include <psp_verstage/psp_transfer.h>
 #include <soc/iomap.h>
-#include <soc/psp_transfer.h>
 #include <security/tpm/tspi.h>
 #include <security/tpm/tss.h>
 #include <security/vboot/vbnv.h>
@@ -73,7 +73,6 @@ static uint32_t update_boot_region(struct vb2_context *ctx)
 	uint32_t psp_dir_addr, bios_dir_addr;
 	uint32_t *psp_dir_in_spi, *bios_dir_in_spi;
 	const char *fname;
-	const char *hash_fname;
 	void *amdfw_location;
 	struct region fw_slot;
 	void *map_base = NULL;
@@ -86,13 +85,11 @@ static uint32_t update_boot_region(struct vb2_context *ctx)
 
 	if (vboot_is_firmware_slot_a(ctx)) {
 		fname = "apu/amdfw_a";
-		hash_fname = "apu/amdfw_a_hash";
 		if (!fmap_locate_area("FW_MAIN_A", &fw_slot))
 			map_base = rdev_mmap(boot_device_ro(), fw_slot.offset, fw_slot.size);
 
 	} else {
 		fname = "apu/amdfw_b";
-		hash_fname = "apu/amdfw_b_hash";
 		if (!fmap_locate_area("FW_MAIN_B", &fw_slot))
 			map_base = rdev_mmap(boot_device_ro(), fw_slot.offset, fw_slot.size);
 	}
@@ -158,7 +155,7 @@ static uint32_t update_boot_region(struct vb2_context *ctx)
 	}
 
 	if (CONFIG(SEPARATE_SIGNED_PSPFW))
-		update_psp_fw_hash_table(hash_fname);
+		update_psp_fw_hash_tables();
 
 	cbfs_unmap(amdfw_location);
 	rdev_munmap(boot_device_ro(), amdfw_location);
@@ -211,7 +208,7 @@ static uint32_t save_buffers(void)
  */
 static void psp_verstage_s0i3_resume(void)
 {
-	uint32_t rv;
+	tpm_result_t rc;
 
 	post_code(POSTCODE_VERSTAGE_S0I3_RESUME);
 
@@ -220,15 +217,15 @@ static void psp_verstage_s0i3_resume(void)
 	if (!CONFIG(PSP_INIT_TPM_ON_S0I3_RESUME))
 		return;
 
-	rv = tpm_setup(true);
-	if (rv != TPM_SUCCESS) {
-		printk(BIOS_ERR, "tpm_setup failed rv:%d\n", rv);
+	rc = tpm_setup(true);
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "tpm_setup failed rc:%d\n", rc);
 		reboot_into_recovery(vboot_get_context(), POSTCODE_INIT_TPM_FAILED);
 	}
 
-	rv = tlcl_disable_platform_hierarchy();
-	if (rv != TPM_SUCCESS) {
-		printk(BIOS_ERR, "tlcl_disable_platform_hierarchy failed rv:%d\n", rv);
+	rc = tlcl_disable_platform_hierarchy();
+	if (rc != TPM_SUCCESS) {
+		printk(BIOS_ERR, "tlcl_disable_platform_hierarchy failed rc:%d\n", rc);
 		reboot_into_recovery(vboot_get_context(), POSTCODE_INIT_TPM_FAILED);
 	}
 }
@@ -312,7 +309,8 @@ void Main(void)
 	verstage_mainboard_early_init();
 
 	svc_write_postcode(POSTCODE_LATE_INIT);
-	fch_io_enable_legacy_io();
+	if (CONFIG(SOC_AMD_COMMON_BLOCK_ACPIMMIO_PM_IO_ACCESS))
+		fch_io_enable_legacy_io();
 
 	printk(BIOS_DEBUG, "calling verstage_soc_spi_init\n");
 	verstage_soc_spi_init();

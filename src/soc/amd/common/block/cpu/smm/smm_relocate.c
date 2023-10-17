@@ -65,6 +65,11 @@ static void smm_relocation_handler(void)
 	uintptr_t tseg_base;
 	size_t tseg_size;
 
+	/* For the TSEG masks all physical address bits including the ones reserved for memory
+	   encryption need to be taken into account. TODO: Find out why this is the case */
+	const unsigned int total_physical_address_bits =
+		cpu_phys_address_size() + get_reserved_phys_addr_bits();
+
 	smm_region(&tseg_base, &tseg_size);
 
 	msr_t msr;
@@ -73,7 +78,7 @@ static void smm_relocation_handler(void)
 
 	msr.lo = ~(tseg_size - 1);
 	msr.lo |= SMM_TSEG_WB;
-	msr.hi = (1 << (cpu_phys_address_size() - 32)) - 1;
+	msr.hi = (1 << (total_physical_address_bits - 32)) - 1;
 	wrmsr(SMM_MASK_MSR, msr);
 
 	uintptr_t smbase = smm_get_cpu_smbase(cpu_index());
@@ -99,4 +104,9 @@ const struct mp_ops amd_mp_ops_with_smm = {
 	.get_smm_info = get_smm_info,
 	.per_cpu_smm_trigger = smm_relocation_handler,
 	.post_mp_init = post_mp_init,
+};
+
+const struct mp_ops amd_mp_ops_no_smm = {
+	.pre_mp_init = pre_mp_init,
+	.get_cpu_count = get_cpu_count,
 };

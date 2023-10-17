@@ -40,6 +40,8 @@ static const struct pad_config override_gpio_table[] = {
 	PAD_NC(GPP_F13, NONE),
 	/* F15 : GSXSRESET# ==> NC */
 	PAD_NC_LOCK(GPP_F15, NONE, LOCK_CONFIG),
+	/* F23 : V1P05EXT_CTRL ==> NC */
+	PAD_NC(GPP_F23, NONE),
 
 	/* H8  : CNV_MFUART2_RXD ==> NC */
 	PAD_NC(GPP_H8, NONE),
@@ -152,6 +154,12 @@ static const struct pad_config early_gpio_table_yavilla[] = {
 };
 
 static const struct pad_config romstage_gpio_table[] = {
+	/* Enable touchscreen, hold in reset */
+	/* C0  : SMBCLK ==> EN_PP3300_TCHSCR */
+	PAD_CFG_GPO(GPP_C0, 1, DEEP),
+	/* C1  : SMBDATA ==> USI_RST_L */
+	PAD_CFG_GPO(GPP_C1, 0, DEEP),
+
 	/* H12 : UART0_RTS# ==> SD_PERST_L */
 	PAD_CFG_GPO(GPP_H12, 1, DEEP),
 	/* H20 : IMGCLKOUT1 ==> WLAN_PERST_L */

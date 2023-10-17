@@ -28,11 +28,11 @@ struct generic_event_record {
 	uint32_t		apic_id;
 	uint64_t		timestamp;
 	uint8_t			guid[16];
-	uint8_t			string[0];
+	uint8_t			string[];
 } __packed;
 
 /*
- * Performance Hob:
+ * Performance HOB:
  *   GUID - fpdt_guid;
  *   Data - FPDT_PEI_EXT_PERF_HEADER one or more FPDT records
 */

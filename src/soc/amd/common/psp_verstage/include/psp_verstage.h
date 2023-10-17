@@ -7,7 +7,7 @@
 #include <amdblocks/psp_efs.h>
 #include <bl_uapp/bl_syscall_public.h>
 #include <stdint.h>
-#include <soc/psp_transfer.h>
+#include <psp_verstage/psp_transfer.h>
 #include <psp_post_code.h>
 
 #define EMBEDDED_FW_SIGNATURE			0x55aa55aa
@@ -38,7 +38,7 @@ int platform_set_sha_op(enum vb2_hash_algorithm hash_alg,
 			struct sha_generic_data *sha_op);
 void platform_report_mode(int developer_mode_enabled);
 
-void update_psp_fw_hash_table(const char *fname);
+void update_psp_fw_hash_tables(void);
 
 void report_prev_boot_status_to_vboot(void);
 

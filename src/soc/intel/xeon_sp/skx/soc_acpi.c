@@ -2,6 +2,7 @@
 
 #include <acpi/acpigen.h>
 #include <arch/smp/mpspec.h>
+#include <arch/vga.h>
 #include <assert.h>
 #include <cpu/intel/turbo.h>
 #include <device/mmio.h>
@@ -49,22 +50,8 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 
 	fadt->iapc_boot_arch = ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042;
 
-	/* PM2 Control Registers */
-	fadt->x_pm2_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm2_cnt_blk.bit_width = fadt->pm2_cnt_len * 8;
-	fadt->x_pm2_cnt_blk.bit_offset = 0;
-	fadt->x_pm2_cnt_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
-	fadt->x_pm2_cnt_blk.addrl = fadt->pm2_cnt_blk;
-	fadt->x_pm2_cnt_blk.addrh = 0x0;
-
-	/* PM1 Timer Register */
-	fadt->x_pm_tmr_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm_tmr_blk.bit_width = fadt->pm_tmr_len * 8;
-	fadt->x_pm_tmr_blk.bit_offset = 0;
-	fadt->x_pm_tmr_blk.access_size = ACPI_ACCESS_SIZE_DWORD_ACCESS;
-	fadt->x_pm_tmr_blk.addrl = fadt->pm_tmr_blk;
-	fadt->x_pm_tmr_blk.addrh = 0x0;
-
+	/* PM Extended Registers */
+	fill_fadt_extended_pm_io(fadt);
 }
 
 void uncore_inject_dsdt(const struct device *device)
@@ -121,9 +108,8 @@ void uncore_inject_dsdt(const struct device *device)
 
 			// additional mem32 resources on socket 0 bus 0
 			if (socket == 0 && stack == 0) {
-				acpigen_resource_dword(0, 0xc, 3, 0, VGA_BASE_ADDRESS,
-					(VGA_BASE_ADDRESS + VGA_BASE_SIZE - 1), 0x0,
-					VGA_BASE_SIZE);
+				acpigen_resource_dword(0, 0xc, 3, 0, VGA_MMIO_BASE,
+					VGA_MMIO_LIMIT, 0x0, VGA_MMIO_SIZE);
 				acpigen_resource_dword(0, 0xc, 1, 0, SPI_BASE_ADDRESS,
 					(SPI_BASE_ADDRESS + SPI_BASE_SIZE - 1), 0x0,
 					SPI_BASE_SIZE);

@@ -146,7 +146,7 @@ struct lb_memory_range {
 struct lb_memory {
 	uint32_t tag;
 	uint32_t size;
-	struct lb_memory_range map[0];
+	struct lb_memory_range map[];
 };
 
 struct lb_pcie {
@@ -168,13 +168,13 @@ struct lb_mainboard {
 	uint32_t size;
 	uint8_t  vendor_idx;
 	uint8_t  part_number_idx;
-	uint8_t  strings[0];
+	uint8_t  strings[];
 };
 
 struct lb_string {
 	uint32_t tag;
 	uint32_t size;
-	uint8_t  string[0];
+	uint8_t  string[];
 };
 
 struct lb_timestamp {
@@ -275,6 +275,11 @@ enum lb_fb_orientation {
 	LB_FB_ORIENTATION_RIGHT_UP = 3,
 };
 
+struct lb_framebuffer_flags {
+	uint8_t has_external_display : 1;
+	uint8_t reserved : 7;
+};
+
 struct lb_framebuffer {
 	uint32_t tag;
 	uint32_t size;
@@ -293,7 +298,8 @@ struct lb_framebuffer {
 	uint8_t reserved_mask_pos;
 	uint8_t reserved_mask_size;
 	uint8_t orientation;
-	uint8_t pad[2];
+	struct lb_framebuffer_flags flags;
+	uint8_t pad;
 };
 
 struct lb_gpio {
@@ -311,7 +317,7 @@ struct lb_gpios {
 	uint32_t size;
 
 	uint32_t count;
-	struct lb_gpio gpios[0];
+	struct lb_gpio gpios[];
 };
 
 struct lb_range {
@@ -357,7 +363,7 @@ struct lb_spi_flash {
 	 */
 
 	uint32_t mmap_count;
-	struct flash_mmap_window mmap_table[0];
+	struct flash_mmap_window mmap_table[];
 };
 
 struct lb_boot_media_params {
@@ -432,14 +438,14 @@ struct type_c_port_info {
 
 struct type_c_info {
 	uint32_t port_count;
-	struct type_c_port_info port_info[0];
+	struct type_c_port_info port_info[];
 };
 
 struct lb_macs {
 	uint32_t tag;
 	uint32_t size;
 	uint32_t count;
-	struct mac_address mac_addrs[0];
+	struct mac_address mac_addrs[];
 };
 
 struct lb_board_config {
@@ -528,7 +534,7 @@ struct	cmos_checksum {
 struct lb_smmstorev2 {
 	uint32_t tag;
 	uint32_t size;
-	uint32_t num_blocks;		/* Number of writeable blocks in SMM */
+	uint32_t num_blocks;		/* Number of writable blocks in SMM */
 	uint32_t block_size;		/* Size of a block in byte. Default: 64 KiB */
 	uint32_t mmap_addr;		/* MMIO address of the store for read only access */
 	uint32_t com_buffer;		/* Physical address of the communication buffer */

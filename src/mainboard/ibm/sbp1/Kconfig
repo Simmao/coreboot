@@ -8,7 +8,6 @@ config BOARD_SPECIFIC_OPTIONS
 	select MEMORY_MAPPED_TPM
 	select MAINBOARD_USES_FSP2_0
 	select SOC_INTEL_SAPPHIRERAPIDS_SP
-	select SUPERIO_ASPEED_AST2400 # Check if AST2400 is compatible
 	select HAVE_ACPI_TABLES
 	select MAINBOARD_USES_IFD_GBE_REGION
 
@@ -25,10 +24,6 @@ config FMDFILE
 	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/board.fmd"
 
 config MAX_SOCKET
-	int
-	default 4
-
-config MAX_SOCKET_UPD
 	int
 	default 4
 

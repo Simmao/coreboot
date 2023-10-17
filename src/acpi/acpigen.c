@@ -476,8 +476,7 @@ void acpigen_write_mutex(const char *name, const uint8_t flags)
 {
 	/* MutexOp */
 	acpigen_emit_ext_op(MUTEX_OP);
-	/* NameString 4 chars only */
-	acpigen_emit_simple_namestring(name);
+	acpigen_emit_namestring(name);
 	acpigen_emit_byte(flags);
 }
 
@@ -485,8 +484,7 @@ void acpigen_write_acquire(const char *name, const uint16_t val)
 {
 	/* AcquireOp */
 	acpigen_emit_ext_op(ACQUIRE_OP);
-	/* NameString 4 chars only */
-	acpigen_emit_simple_namestring(name);
+	acpigen_emit_namestring(name);
 	acpigen_emit_word(val);
 }
 
@@ -494,8 +492,7 @@ void acpigen_write_release(const char *name)
 {
 	/* ReleaseOp */
 	acpigen_emit_ext_op(RELEASE_OP);
-	/* NameString 4 chars only */
-	acpigen_emit_simple_namestring(name);
+	acpigen_emit_namestring(name);
 }
 
 static void acpigen_write_field_length(uint32_t len)
@@ -1764,6 +1761,10 @@ void acpigen_write_dsm(const char *uuid, void (**callbacks)(void *), size_t coun
  * bit 0:    other functions than 0 are supported
  * bits 1-x: function x supported
  */
+/* On GCC aarch64 the compiler is worried about alloca() having unbounded stack usage. */
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wstack-usage="
+#endif
 static void acpigen_dsm_uuid_enum_functions(const struct dsm_uuid *id)
 {
 	const size_t bytes = DIV_ROUND_UP(id->count, BITS_PER_BYTE);

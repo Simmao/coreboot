@@ -47,7 +47,7 @@ config SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PCR
 
 config SOC_INTEL_STORE_CSE_FW_VERSION
 	bool
-	default n
+	default y
 	depends on SOC_INTEL_CSE_LITE_SKU
 	help
 	  This configuration option stores CSE RW FW version in CBMEM area.
@@ -61,6 +61,15 @@ config SOC_INTEL_STORE_CSE_FW_VERSION
 	  the CSE FW version is between 7ms-20ms (depending on the SoC architecture) hence,
 	  ensure this feature is platform specific and only enabled for the platform
 	  that would like to store the CSE version into the CBMEM.
+
+config SOC_INTEL_CSE_FW_PARTITION_CMOS_OFFSET
+	int
+	default 68
+	depends on SOC_INTEL_CSE_LITE_SKU
+	help
+	  This configuration option stores the starting offset of cse fw partition versions in
+	  CMOS memory. The offset should be byte aligned and must leave enough memory to store
+	  required firmware partition versions.
 
 config SOC_INTEL_STORE_ISH_FW_VERSION
 	bool
@@ -130,6 +139,19 @@ config SOC_INTEL_CSE_LITE_SKU
 	default n
 	help
 	 Enables CSE Lite SKU
+
+config SOC_INTEL_CSE_LITE_PSR
+	bool
+	default n
+	depends on SOC_INTEL_CSE_LITE_SKU
+	select SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE
+	help
+	 Select this config if Platform Service Record(PSR) is supported by the platform. This
+	 config is applicable only for Lite SKU, where PSR data backup is required prior to a
+	 CSE firmware downgrade during which CSE data is cleared. PSR services in CSE FW is
+	 enabled only post DRAM init and the command to backup PSR data is also supported only
+	 post DRAM init. Hence platform that selects PSR would need to perform CSE firmware sync
+	 in ramstage.
 
 config SOC_INTEL_CSE_SERVER_SKU
 	bool
@@ -408,3 +430,11 @@ config CSE_OEMP_FILE
 	  the key owned by trusted owner.
 
 endif
+
+config CSE_RESET_CLEAR_EC_AP_IDLE_FLAG
+	bool
+	default y if !SYSTEM_TYPE_LAPTOP
+	help
+	  Select this if the variant is a Chromebox/base. This allows AP to direct EC
+	  to clear AP_IDLE flag before triggering reset to make sure AP can boot up
+	  after reset.

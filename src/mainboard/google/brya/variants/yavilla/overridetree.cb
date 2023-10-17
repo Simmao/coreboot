@@ -7,6 +7,9 @@ fw_config
 	end
 	field WIFI_SAR_ID 2 3
 		option SAR_ID_0			0
+		option SAR_ID_1			1
+		option SAR_ID_2			2
+		option SAR_ID_3			3
 	end
 	field STYLUS 9
 		option STYLUS_ABSENT		0
@@ -37,10 +40,60 @@ fw_config
 		option INTEL_YAVIJO_WIFI	5
 		option UNUSED			15
 	end
+	field TOUCH_PANEL 40 41
+		option TOUCH_ELAN_I2C           0
+		option TOUCH_ELAN_HID_I2C       1
+		option TOUCH_G2_HID_I2c		2
+	end
 end
 
 chip soc/intel/alderlake
 	register "sagv" = "SaGv_Enabled"
+
+	# EMMC Tx CMD Delay
+	# Refer to EDS-Vol2-42.3.7.
+	# [14:8] steps of delay for DDR mode, each 125ps, range: 0 - 39.
+	# [6:0] steps of delay for SDR mode, each 125ps, range: 0 - 39.
+	register "common_soc_config.emmc_dll.emmc_tx_cmd_cntl" = "0x505"
+
+	# EMMC TX DATA Delay 1
+	# Refer to EDS-Vol2-42.3.8.
+	# [14:8] steps of delay for HS400, each 125ps, range: 0 - 78.
+	# [6:0] steps of delay for SDR104/HS200, each 125ps, range: 0 - 79.
+	register "common_soc_config.emmc_dll.emmc_tx_data_cntl1" = "0x909"
+
+	# EMMC TX DATA Delay 2
+	# Refer to EDS-Vol2-42.3.9.
+	# [30:24] steps of delay for SDR50, each 125ps, range: 0 - 79.
+	# [22:16] steps of delay for DDR50, each 125ps, range: 0 - 78.
+	# [14:8] steps of delay for SDR25/HS50, each 125ps, range: 0 -79.
+	# [6:0] steps of delay for SDR12, each 125ps. Range: 0 - 79.
+	register "common_soc_config.emmc_dll.emmc_tx_data_cntl2" = "0x1C272828"
+
+	# EMMC RX CMD/DATA Delay 1
+	# Refer to EDS-Vol2-42.3.10.
+	# [30:24] steps of delay for SDR50, each 125ps, range: 0 - 119.
+	# [22:16] steps of delay for DDR50, each 125ps, range: 0 - 78.
+	# [14:8] steps of delay for SDR25/HS50, each 125ps, range: 0 - 119.
+	# [6:0] steps of delay for SDR12, each 125ps, range: 0 - 119.
+	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl1" = "0x1C171733"
+
+	# EMMC RX CMD/DATA Delay 2
+	# Refer to EDS-Vol2-42.3.12.
+	# [17:16] stands for Rx Clock before Output Buffer,
+	#         00: Rx clock after output buffer,
+	#         01: Rx clock before output buffer,
+	#         10: Automatic selection based on working mode.
+	#         11: Reserved
+	# [14:8] steps of delay for Auto Tuning Mode, each 125ps, range: 0 - 39.
+	# [6:0] steps of delay for HS200, each 125ps, range: 0 - 79.
+	register "common_soc_config.emmc_dll.emmc_rx_cmd_data_cntl2" = "0x10024"
+
+	# EMMC Rx Strobe Delay
+	# Refer to EDS-Vol2-42.3.11.
+	# [14:8] Rx Strobe Delay DLL 1(HS400 Mode), each 125ps, range: 0 - 39.
+	# [6:0] Rx Strobe Delay DLL 2(HS400 Mode), each 125ps, range: 0 - 39.
+	register "common_soc_config.emmc_dll.emmc_rx_strobe_cntl" = "0x1414"
 
 	# Bit 0 - C0 has no redriver, so enable SBU muxing in the SoC.
 	# Bit 2 - C1 has a redriver which does SBU muxing.
@@ -199,7 +252,7 @@ chip soc/intel/alderlake
 				register "hid" = ""ELAN0001""
 				register "desc" = ""ELAN Touchscreen""
 				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "probed" = "1"
+				register "detect" = "1"
 				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "reset_delay_ms" = "20"
 				register "reset_off_delay_ms" = "2"
@@ -209,13 +262,34 @@ chip soc/intel/alderlake
 				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
 				register "enable_delay_ms" = "1"
 				register "has_power_resource" = "1"
-				device i2c 10 on end
+				device i2c 10 on
+					probe TOUCH_PANEL TOUCH_ELAN_I2C
+				end
 			end
 			chip drivers/i2c/hid
 				register "generic.hid" = ""ELAN2513""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
+				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "generic.reset_delay_ms" = "20"
+				register "generic.reset_off_delay_ms" = "2"
+				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
+				register "generic.stop_delay_ms" = "280"
+				register "generic.stop_off_delay_ms" = "2"
+				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
+				register "generic.enable_delay_ms" = "1"
+				register "generic.has_power_resource" = "1"
+				register "hid_desc_reg_offset" = "0x01"
+				device i2c 10 on
+					probe TOUCH_PANEL TOUCH_ELAN_HID_I2C
+				end
+                        end
+			chip drivers/i2c/hid
+				register "generic.hid" = ""ELAN2513""
+				register "generic.desc" = ""ELAN Touchscreen""
+				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
@@ -232,7 +306,24 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""GTCH7503""
 				register "generic.desc" = ""G2TOUCH Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
+				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "generic.reset_delay_ms" = "50"
+				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
+				register "generic.stop_delay_ms" = "100"
+				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
+				register "generic.enable_delay_ms" = "1"
+				register "generic.has_power_resource" = "1"
+				register "hid_desc_reg_offset" = "0x01"
+				device i2c 10 on
+					probe TOUCH_PANEL TOUCH_G2_HID_I2c
+				end
+                        end
+			chip drivers/i2c/hid
+				register "generic.hid" = ""GTCH7503""
+				register "generic.desc" = ""G2TOUCH Touchscreen""
+				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "50"
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
@@ -264,6 +355,7 @@ chip soc/intel/alderlake
 				register "chip_name" = ""Ov 8856 Camera""
 				register "device_type" = "INTEL_ACPI_CAMERA_SENSOR"
 				register "has_power_resource" = "1"
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
 
 				register "ssdb.lanes_used" = "4"
 				register "ssdb.link_used" = "1"
@@ -283,12 +375,11 @@ chip soc/intel/alderlake
 				register "gpio_panel.gpio[2].gpio_num" = "GPP_D3"   # WCAM_RST_L
 
 				#_ON
-				register "on_seq.ops_cnt" = "5"
+				register "on_seq.ops_cnt" = "4"
 				register "on_seq.ops[0]" = "SEQ_OPS_CLK_ENABLE(0, 0)"
 				register "on_seq.ops[1]" = "SEQ_OPS_GPIO_ENABLE(0, 5)"
 				register "on_seq.ops[2]" = "SEQ_OPS_GPIO_ENABLE(1, 5)"
-				register "on_seq.ops[3]" = "SEQ_OPS_GPIO_DISABLE(2, 5)"
-				register "on_seq.ops[4]" = "SEQ_OPS_GPIO_ENABLE(2, 5)"
+				register "on_seq.ops[3]" = "SEQ_OPS_GPIO_ENABLE(2, 5)"
 
 				#_OFF
 				register "off_seq.ops_cnt" = "4"
@@ -307,8 +398,23 @@ chip soc/intel/alderlake
 				register "chip_name" = ""DW AF DAC""
 				register "device_type" = "INTEL_ACPI_CAMERA_VCM"
 
-				register "pr0" = ""\\_SB.PCI0.I2C2.CAM0.PRIC""
 				register "vcm_compat" = ""dongwoon,dw9714""
+				register "has_power_resource" = "1"
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
+
+				#Controls
+				register "gpio_panel.gpio[0].gpio_num" = "GPP_D15"  # EN_PP2800_WCAM_X
+				register "gpio_panel.gpio[1].gpio_num" = "GPP_D3"   # WCAM_RST_L
+
+				#_ON
+				register "on_seq.ops_cnt" = "2"
+				register "on_seq.ops[0]" = "SEQ_OPS_GPIO_ENABLE(0, 5)"
+				register "on_seq.ops[1]" = "SEQ_OPS_GPIO_ENABLE(1, 5)"
+
+				#_OFF
+				register "off_seq.ops_cnt" = "2"
+				register "off_seq.ops[1]" = "SEQ_OPS_GPIO_DISABLE(1, 0)"
+				register "off_seq.ops[0]" = "SEQ_OPS_GPIO_DISABLE(0, 0)"
 
 				device i2c 0C on
 					probe WFC WFC_MIPI_OVTI8856
@@ -321,12 +427,10 @@ chip soc/intel/alderlake
 				register "chip_name" = ""GT24C08""
 				register "device_type" = "INTEL_ACPI_CAMERA_NVM"
 
-				register "pr0" = ""\\_SB.PCI0.I2C2.CAM0.PRIC""
-
-				register "nvm_size" = "0x2000"
+				register "nvm_size" = "0x400"
 				register "nvm_pagesize" = "1"
 				register "nvm_readonly" = "1"
-				register "nvm_width" = "0x10"
+				register "nvm_width" = "0x08"
 				register "nvm_compat" = ""atmel,24c08""
 
 				device i2c 50 on
@@ -373,6 +477,12 @@ chip soc/intel/alderlake
 				register "hid" = ""MX98360A""
 				register "sdmode_gpio" =  "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_A11)"
 				register "sdmode_delay" = "5"
+				device generic 0 on end
+			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
 				device generic 0 on end
 			end
 		end

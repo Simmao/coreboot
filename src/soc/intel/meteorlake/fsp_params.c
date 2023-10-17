@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootmode.h>
 #include <bootsplash.h>
 #include <cbfs.h>
 #include <console/console.h>
@@ -10,6 +11,7 @@
 #include <device/pci.h>
 #include <fsp/api.h>
 #include <fsp/fsp_debug_event.h>
+#include <fsp/fsp_gop_blt.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
 #include <option.h>
@@ -312,18 +314,23 @@ static int get_l1_substate_control(enum L1_substates_control ctl)
 }
 
 /*
+ * Chip config parameter pcie_rp_aspm uses (UPD value + 1) because
+ * a UPD value of 0 for pcie_rp_aspm means disabled. In order to ensure
+ * that the mainboard setting does not disable ASPM incorrectly, chip
+ * config parameter values are offset by 1 with 0 meaning use FSP UPD default.
  * get_aspm_control() ensures that the right UPD value is set in fsp_params.
- * 0: Disable ASPM
- * 1: L0s only
- * 2: L1 only
- * 3: L0s and L1
- * 4: Auto configuration
+ * 0: Use FSP UPD default
+ * 1: Disable ASPM
+ * 2: L0s only
+ * 3: L1 only
+ * 4: L0s and L1
+ * 5: Auto configuration
  */
 static unsigned int get_aspm_control(enum ASPM_control ctl)
 {
-	if (ctl > ASPM_AUTO)
+	if ((ctl > ASPM_AUTO) || (ctl == ASPM_DEFAULT))
 		ctl = ASPM_AUTO;
-	return ctl;
+	return ctl - 1;
 }
 
 __weak void mainboard_update_soc_chip_config(struct soc_intel_meteorlake_config *config)
@@ -386,7 +393,7 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 	 * This would avoid APs from getting hijacked by FSP while coreboot
 	 * decides to set SkipMpInit UPD.
 	 */
-	s_cfg->CpuMpPpi = (uintptr_t) mp_fill_ppi_services_data();
+	s_cfg->CpuMpPpi = (uintptr_t)mp_fill_ppi_services_data();
 
 	/*
 	 * Fill `2nd microcode loading FSP UPD` if FSP is running CPU feature
@@ -405,7 +412,7 @@ static void fill_fsps_igd_params(FSP_S_CONFIG *s_cfg,
 
 	/* Check if IGD is present and fill Graphics init param accordingly */
 	s_cfg->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(PCI_DEVFN_IGD);
-	s_cfg->LidStatus = CONFIG(RUN_FSP_GOP);
+	s_cfg->LidStatus = CONFIG(VBOOT_LID_SWITCH) ? get_lid_switch() : CONFIG(RUN_FSP_GOP);
 	s_cfg->PavpEnable = CONFIG(PAVP);
 }
 
@@ -654,7 +661,12 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	/* Enable the energy efficient turbo mode */
 	s_cfg->EnergyEfficientTurbo = 1;
 	s_cfg->PmcLpmS0ixSubStateEnableMask = get_supported_lpm_mask();
+	/* Un-Demotion from Demoted C1 need to be disable when
+	 * C1 auto demotion is disabled */
+	s_cfg->C1StateUnDemotion = !config->disable_c1_state_auto_demotion;
+	s_cfg->C1StateAutoDemotion = !config->disable_c1_state_auto_demotion;
 	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+	s_cfg->PkgCStateUnDemotion = !config->disable_package_c_state_demotion;
 	s_cfg->PmcV1p05PhyExtFetControlEn = 1;
 
 	/* Enable PCH to CPU energy report feature. */
@@ -859,5 +871,10 @@ __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 /* Handle FSP logo params */
 void soc_load_logo(FSPS_UPD *supd)
 {
-	bmp_load_logo(&supd->FspsConfig.LogoPtr, &supd->FspsConfig.LogoSize);
+	fsp_convert_bmp_to_gop_blt(&supd->FspsConfig.LogoPtr,
+			 &supd->FspsConfig.LogoSize,
+			 &supd->FspsConfig.BltBufferAddress,
+			 &supd->FspsConfig.BltBufferSize,
+			 &supd->FspsConfig.LogoPixelHeight,
+			 &supd->FspsConfig.LogoPixelWidth);
 }

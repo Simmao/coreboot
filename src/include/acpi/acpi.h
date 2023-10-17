@@ -77,7 +77,7 @@ enum acpi_tables {
 	/* Tables defined by ACPI and used by coreboot */
 	BERT, CEDT, DBG2, DMAR, DSDT, EINJ, FACS, FADT, HEST, HMAT, HPET, IVRS,
 	MADT, MCFG, RSDP, RSDT, SLIT, SRAT, SSDT, TCPA, TPM2, XSDT, ECDT, LPIT,
-	SPCR,
+	SPCR, GTDT,
 	/* Additional proprietary tables used by coreboot */
 	VFCT, NHLT, SPMI, CRAT
 };
@@ -217,8 +217,7 @@ typedef struct acpi_tpm2 {
 } __packed acpi_tpm2_t;
 
 typedef struct acpi_mcfg_mmconfig {
-	u32 base_address;
-	u32 base_reserved;
+	u64 base_address;
 	u16 pci_segment_group_number;
 	u8 start_bus_number;
 	u8 end_bus_number;
@@ -454,7 +453,8 @@ typedef struct acpi_lpi_desc_hdr {
 	uint16_t reserved;
 } __packed acpi_lpi_desc_hdr_t;
 
-#define ACPI_LPIT_CTR_FREQ_TSC 0
+#define ACPI_LPIT_CTR_FREQ_TSC	0
+#define ACPI_LPIT_SLP_S0_FREQ	0
 
 /* LPIT: Native C-state instruction based LPI structure */
 typedef struct acpi_lpi_desc_ncst {
@@ -467,6 +467,8 @@ typedef struct acpi_lpi_desc_ncst {
 	uint64_t counter_frequency;	/* Frequency in cycles per second - 0 means TSC freq */
 } __packed acpi_lpi_desc_ncst_t;
 
+#define VFCT_VBIOS_CHECKSUM_OFFSET  0x21
+
 /* VFCT image header */
 typedef struct acpi_vfct_image_hdr {
 	u32 PCIBus;
@@ -478,7 +480,7 @@ typedef struct acpi_vfct_image_hdr {
 	u16 SSID;
 	u32 Revision;
 	u32 ImageLength;
-	u8  VbiosContent;	// dummy - copy VBIOS here
+	u8  VbiosContent[];	// dummy - copy VBIOS here
 } __packed acpi_vfct_image_hdr_t;
 
 /* VFCT (VBIOS Fetch Table) */
@@ -506,7 +508,7 @@ typedef struct acpi_ivrs_ivhd {
 	uint16_t pci_segment_group;
 	uint16_t iommu_info;
 	uint32_t iommu_feature_info;
-	uint8_t entry[0];
+	uint8_t entry[];
 } __packed acpi_ivrs_ivhd_t;
 
 /* IVRS (I/O Virtualization Reporting Structure) Type 10h */
@@ -549,7 +551,7 @@ typedef struct acpi_ivrs_ivhd_11 {
 	uint32_t efr_reg_image_low;
 	uint32_t efr_reg_image_high;
 	uint32_t reserved[2];
-	uint8_t entry[0];
+	uint8_t entry[];
 } __packed acpi_ivrs_ivhd11_t;
 
 enum dev_scope_type {
@@ -569,7 +571,7 @@ typedef struct dev_scope {
 	struct {
 		u8 dev;
 		u8 fn;
-	} __packed path[0];
+	} __packed path[];
 } __packed dev_scope_t;
 
 enum dmar_type {
@@ -651,7 +653,7 @@ typedef struct acpi_dmar {
 	u8 host_address_width;
 	u8 flags;
 	u8 reserved[10];
-	dmar_entry_t structure[0];
+	dmar_entry_t structure[];
 } __packed acpi_dmar_t;
 
 /* MADT: APIC Structure Types */
@@ -748,6 +750,93 @@ typedef struct acpi_madt_lx2apic_nmi {
 	u8 reserved[3];
 } __packed acpi_madt_lx2apic_nmi_t;
 
+/* MADT: GIC CPU Interface (GICC) Structure 6.5 */
+struct gicc_flags {
+	uint32_t enabled : 1;
+	/* 0 - Level-triggered | 1 - Edge-Triggered */
+	uint32_t performance_interrupt_mode : 1;
+	uint32_t vgic_maintenance_interrupt_mode : 1;
+	uint32_t online_capable : 1;
+	uint32_t reserved : 28;
+};
+_Static_assert(sizeof(struct gicc_flags) == sizeof(uint32_t), "Wrong gicc_flags size\n");
+
+typedef struct acpi_gicc {
+	uint8_t type;
+	uint8_t length;
+	uint16_t reserved;
+	uint32_t cpu_interface_number;
+	uint32_t acpi_processor_uid;
+	struct gicc_flags flags;
+	uint32_t parking_protocol_version;
+	uint32_t performance_interrupt_gsiv;
+	uint64_t parked_address;
+	uint64_t physical_base_address; /* GIC v1/v2 or GIC v3/v4 in v2 compat mode */
+	uint64_t gicv;
+	uint64_t gich;
+	uint32_t vgic_maintenance_interrupt;
+	uint64_t gicr_base_address; /* Only GIC v3 and above */
+	uint64_t mpidr;
+	uint8_t processor_power_efficiency_class;
+	uint8_t reserved1;
+	uint16_t spe_overflow_interrupt;
+	uint16_t trbe_interrupt;
+} __packed acpi_madt_gicc_t;
+_Static_assert(sizeof(acpi_madt_gicc_t) == 82, "Wrong acpi_madt_gicc_t size\n");
+
+/* MADT: GIC Distributor (GICD) Structure */
+typedef struct acpi_gicd {
+	uint8_t type;
+	uint8_t length;
+	uint16_t reserved1;
+	uint32_t gic_id;
+	uint64_t physical_base_address;
+	uint32_t system_vector_base;
+	uint8_t gic_version;
+	uint8_t reserved2[3];
+} __packed acpi_madt_gicd_t;
+_Static_assert(sizeof(acpi_madt_gicd_t) == 24, "Wrong acpi_madt_gicd_t size\n");
+
+/* MADT: GIC MSI Frame Structure */
+struct gic_msi_flags {
+	uint32_t spi_count_select : 1;
+	uint32_t reserved : 31;
+};
+_Static_assert(sizeof(struct gic_msi_flags) == sizeof(uint32_t), "Wrong gic_msi_flags size\n");
+
+typedef struct acpi_gic_msi {
+	uint8_t type;
+	uint8_t length;
+	uint16_t reserved;
+	uint32_t gic_msi_frame_id;
+	uint64_t physical_base_address;
+	struct gic_msi_flags flags;
+	uint16_t spi_count;
+	uint16_t spi_base;
+} __packed acpi_gic_msi_t;
+_Static_assert(sizeof(acpi_gic_msi_t) == 24, "Wrong acpi_gic_msi_t size\n");
+
+/* MADT: GIC Redistributor (GICR) Structure */
+typedef struct acpi_girr {
+	uint8_t type;
+	uint8_t length;
+	uint16_t reserved;
+	uint64_t discovery_range_base_address;
+	uint32_t discovery_range_length;
+} __packed acpi_madt_gicr_t;
+_Static_assert(sizeof(acpi_madt_gicr_t) == 16, "Wrong acpi_madt_gicr_t size\n");
+
+/* MADT: GIC Interrupt Translation Service (ITS) Structure */
+typedef struct acpi_gic_its {
+	uint8_t type;
+	uint8_t length;
+	uint16_t reserved;
+	uint32_t gic_its_id;
+	uint64_t physical_base_address;
+	uint32_t reserved2;
+} __packed acpi_madt_gic_its_t;
+_Static_assert(sizeof(acpi_madt_gic_its_t) == 20, "Wrong MADT acpi_madt_gic_its_t size\n");
+
 #define ACPI_DBG2_PORT_SERIAL			0x8000
 #define  ACPI_DBG2_PORT_SERIAL_16550		0x0000
 #define  ACPI_DBG2_PORT_SERIAL_16550_DBGP	0x0001
@@ -767,7 +856,7 @@ typedef struct acpi_dbg2_header {
 	acpi_header_t header;
 	uint32_t devices_offset;
 	uint32_t devices_count;
-} __attribute__((packed)) acpi_dbg2_header_t;
+} __packed acpi_dbg2_header_t;
 
 /* DBG2: Microsoft Debug Port Table 2 device entry */
 typedef struct acpi_dbg2_device {
@@ -783,7 +872,7 @@ typedef struct acpi_dbg2_device {
 	uint8_t  reserved[2];
 	uint16_t base_address_offset;
 	uint16_t address_size_offset;
-} __attribute__((packed)) acpi_dbg2_device_t;
+} __packed acpi_dbg2_device_t;
 
 /* FADT (Fixed ACPI Description Table) */
 typedef struct acpi_fadt {
@@ -1246,7 +1335,7 @@ typedef struct acpi_einj_trigger_table {
 	u32 revision;
 	u32 table_size;
 	u32 entry_count;
-	acpi_einj_action_table_t trigger_action[1];
+	acpi_einj_action_table_t trigger_action[];
 } __packed acpi_einj_trigger_table_t;
 
 typedef struct set_error_type {
@@ -1337,6 +1426,103 @@ _Static_assert(sizeof(acpi_spcr_t) == 88, "acpi_spcr_t must have an 88 byte size
 #define ARMH_GIC_COMPATIBLE_INTERRUPT (1 << 3)
 #define RISCV_PLIC_COMPATIBLE_INTERRUPT (1 << 4)
 
+/* GTDT - Generic Timer Description Table (ACPI 5.1) Version 2 */
+typedef struct acpi_table_gtdt {
+	acpi_header_t header;	/* Common ACPI table header */
+	u64 counter_block_address;
+	u32 reserved;
+	u32 secure_el1_interrupt;
+	u32 secure_el1_flags;
+	u32 non_secure_el1_interrupt;
+	u32 non_secure_el1_flags;
+	u32 virtual_timer_interrupt;
+	u32 virtual_timer_flags;
+	u32 non_secure_el2_interrupt;
+	u32 non_secure_el2_flags;
+	u64 counter_read_block_address;
+	u32 platform_timer_count;
+	u32 platform_timer_offset;
+} __packed acpi_gtdt_t;
+
+/* Flag Definitions: Timer Block Physical Timers and Virtual timers */
+
+#define ACPI_GTDT_INTERRUPT_MODE        (1)
+#define ACPI_GTDT_INTERRUPT_POLARITY    (1<<1)
+#define ACPI_GTDT_ALWAYS_ON             (1<<2)
+
+struct acpi_gtdt_el2 {
+	u32 virtual_el2_timer_gsiv;
+	u32 virtual_el2_timer_flags;
+};
+
+/* Common GTDT subtable header */
+
+struct acpi_gtdt_header {
+	u8 type;
+	u16 length;
+} __packed;
+
+/* Values for GTDT subtable type above */
+
+enum acpi_gtdt_type {
+	ACPI_GTDT_TYPE_TIMER_BLOCK = 0,
+	ACPI_GTDT_TYPE_WATCHDOG = 1,
+	ACPI_GTDT_TYPE_RESERVED = 2	/* 2 and greater are reserved */
+};
+
+/* GTDT Subtables, correspond to Type in struct acpi_gtdt_header */
+
+/* 0: Generic Timer Block */
+
+struct acpi_gtdt_timer_block {
+	struct acpi_gtdt_header header;
+	u8 reserved;
+	u64 block_address;
+	u32 timer_count;
+	u32 timer_offset;
+} __packed;
+
+/* Timer Sub-Structure, one per timer */
+
+struct acpi_gtdt_timer_entry {
+	u8 frame_number;
+	u8 reserved[3];
+	u64 base_address;
+	u64 el0_base_address;
+	u32 timer_interrupt;
+	u32 timer_flags;
+	u32 virtual_timer_interrupt;
+	u32 virtual_timer_flags;
+	u32 common_flags;
+} __packed;
+
+/* Flag Definitions: timer_flags and virtual_timer_flags above */
+
+#define ACPI_GTDT_GT_IRQ_MODE               (1)
+#define ACPI_GTDT_GT_IRQ_POLARITY           (1<<1)
+
+/* Flag Definitions: common_flags above */
+
+#define ACPI_GTDT_GT_IS_SECURE_TIMER        (1)
+#define ACPI_GTDT_GT_ALWAYS_ON              (1<<1)
+
+/* 1: SBSA Generic Watchdog Structure */
+
+struct acpi_gtdt_watchdog {
+	struct acpi_gtdt_header header;
+	u8 reserved;
+	u64 refresh_frame_address;
+	u64 control_frame_address;
+	u32 timer_interrupt;
+	u32 timer_flags;
+} __packed;
+
+/* Flag Definitions: timer_flags above */
+
+#define ACPI_GTDT_WATCHDOG_IRQ_MODE         (1)
+#define ACPI_GTDT_WATCHDOG_IRQ_POLARITY     (1<<1)
+#define ACPI_GTDT_WATCHDOG_SECURE           (1<<2)
+
 uintptr_t get_coreboot_rsdp(void);
 void acpi_create_einj(acpi_einj_t *einj, uintptr_t addr, u8 actions);
 
@@ -1346,11 +1532,14 @@ unsigned long fw_cfg_acpi_tables(unsigned long start);
 void preload_acpi_dsdt(void);
 unsigned long write_acpi_tables(const unsigned long addr);
 unsigned long acpi_fill_madt(unsigned long current);
+unsigned long acpi_arch_fill_madt(acpi_madt_t *madt, unsigned long current);
 
 void acpi_fill_fadt(acpi_fadt_t *fadt);
 void arch_fill_fadt(acpi_fadt_t *fadt);
 void soc_fill_fadt(acpi_fadt_t *fadt);
 void mainboard_fill_fadt(acpi_fadt_t *fadt);
+
+void fill_fadt_extended_pm_io(acpi_fadt_t *fadt);
 
 void acpi_fill_gnvs(void);
 void acpi_fill_cnvs(void);
@@ -1371,11 +1560,15 @@ int acpi_create_cedt_chbs(acpi_cedt_chbs_t *chbs, u32 uid, u32 cxl_ver, u64 base
 int acpi_create_cedt_cfmws(acpi_cedt_cfmws_t *cfmws, u64 base_hpa, u64 window_size,
 	u8 eniw, u32 hbig, u16 restriction, u16 qtg_id, const u32 *interleave_target);
 
+
 int acpi_create_madt_ioapic_from_hw(acpi_madt_ioapic_t *ioapic, u32 addr);
 
 unsigned long acpi_create_madt_one_lapic(unsigned long current, u32 cpu, u32 apic);
 
 unsigned long acpi_create_madt_lapic_nmis(unsigned long current);
+
+uintptr_t platform_get_gicd_base(void);
+uintptr_t platform_get_gicr_base(void);
 
 int acpi_create_srat_lapic(acpi_srat_lapic_t *lapic, u8 node, u8 apic);
 int acpi_create_srat_x2apic(acpi_srat_x2apic_t *x2apic, u32 node, u32 apic);
@@ -1434,7 +1627,10 @@ unsigned long acpi_write_hpet(const struct device *device, unsigned long start,
 void generate_cpu_entries(const struct device *device);
 
 unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
-				const struct device *dev, uint8_t access_size);
+				       const struct device *dev, uint8_t access_size);
+unsigned long acpi_pl011_write_dbg2_uart(acpi_rsdp_t *rsdp, unsigned long current,
+					 uint64_t base, const char *name);
+
 void acpi_create_dmar(acpi_dmar_t *dmar, enum dmar_flags flags,
 		      unsigned long (*acpi_fill_dmar)(unsigned long));
 unsigned long acpi_create_dmar_drhd(unsigned long current, u8 flags,
@@ -1475,6 +1671,13 @@ unsigned long acpi_create_lpi_desc_ncst(acpi_lpi_desc_ncst_t *lpi_desc, uint16_t
 
 /* chipsets that select ACPI_BERT must implement this function */
 enum cb_err acpi_soc_get_bert_region(void **region, size_t *length);
+
+void acpi_soc_fill_gtdt(acpi_gtdt_t *gtdt);
+unsigned long acpi_soc_gtdt_add_timers(uint32_t *count, unsigned long current);
+unsigned long acpi_gtdt_add_timer_block(unsigned long current, const uint64_t address,
+					   struct acpi_gtdt_timer_entry *timers, size_t number);
+unsigned long acpi_gtdt_add_watchdog(unsigned long current, uint64_t refresh_frame,
+				     uint64_t control_frame, uint32_t gsiv, uint32_t flags);
 
 /* For ACPI S3 support. */
 void __noreturn acpi_resume(void *wake_vec);

@@ -42,16 +42,19 @@ test-docker-login: test-docker
 
 coreboot-sdk: test-docker
 	@echo "Building coreboot SDK $(crossgcc_version) from commit $(DOCKER_COMMIT)"
-	cat coreboot-sdk/Dockerfile | \
-		sed "s/{{DOCKER_COMMIT}}/$(DOCKER_COMMIT)/g" | \
-		sed "s/{{SDK_VERSION}}/$(COREBOOT_IMAGE_TAG)/g" | \
-		sed "s/{{CROSSGCC_PARAM}}/$(COREBOOT_CROSSGCC_PARAM)/g" | \
-		$(DOCKER) build -t coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG) -
+	$(DOCKER) build \
+		--tag coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG) \
+		--build-arg=SDK_VERSION="$(COREBOOT_IMAGE_TAG)" \
+		--build-arg=DOCKER_COMMIT="$(DOCKER_COMMIT)" \
+		--build-arg=CROSSGCC_PARAM="$(COREBOOT_CROSSGCC_PARAM)" \
+		coreboot-sdk
 
-coreboot-sdk-test: coreboot-sdk test-docker
-	@echo "Testing coreboot SDK $(crossgcc_version), built from commit $(DOCKER_COMMIT)"
-	cat coreboot-sdk-test/Dockerfile | \
-		$(DOCKER) build -t coreboot/coreboot-sdk-test:$(COREBOOT_IMAGE_TAG) -
+coreboot-jenkins-test: test-docker
+	@echo "Testing coreboot SDK and jenkins node version $(crossgcc_version), built from commit $(DOCKER_COMMIT)"
+	$(DOCKER) build \
+		--tag coreboot/coreboot-jenkins-test:$(COREBOOT_IMAGE_TAG) \
+		--build-arg=SDK_VERSION="$(COREBOOT_IMAGE_TAG)" \
+		coreboot-jenkins-test
 
 upload-coreboot-sdk: test-docker-login
 	$(DOCKER) push coreboot/coreboot-sdk:$(COREBOOT_IMAGE_TAG)
@@ -125,26 +128,29 @@ docker-what-jenkins-does: docker-run-local
 docker-what-jenkins-does: override DOCKER_RUN_LOCAL := \
 	make clean && make what-jenkins-does CPUS=$(CPUS)
 
-docker-jenkins-server: test-docker
+test-docker-cache-dir:
 	@if [ ! -d "$(COREBOOT_JENKINS_CACHE_DIR)" ]; then \
 		printf "\nError: %s does not exist.\n" "$(COREBOOT_JENKINS_CACHE_DIR)"; \
 		printf "Please run:\nsudo mkdir -p %s\n\n" "$(COREBOOT_JENKINS_CACHE_DIR)"; \
+		printf "sudo chown -R $$(whoami):$$(whoami) %s\n\n" "$(COREBOOT_JENKINS_CACHE_DIR)"; \
 		false; \
 	fi
 	@if ! touch "$(COREBOOT_JENKINS_CACHE_DIR)/testfile" 2>/dev/null; then \
 		printf "\nError: Cannot create file in %s." "$(COREBOOT_JENKINS_CACHE_DIR)"; \
-		printf "Please run:\nsudo chown -R $(whoami):$(whoami) %s\n\n" "$(COREBOOT_JENKINS_CACHE_DIR)"; \
+		printf "Please run:\nsudo chown -R $$(whoami):$$(whoami) %s\n\n" "$(COREBOOT_JENKINS_CACHE_DIR)"; \
+		false; \
 	else \
 		 rm -f "$(COREBOOT_JENKINS_CACHE_DIR)/testfile"; \
 	fi
+
+docker-jenkins-server: test-docker-cache-dir test-docker
 	$(DOCKER) run -d --privileged --restart=always \
 		-p $(COREBOOT_JENKINS_PORT):49151 \
 		-v $(COREBOOT_JENKINS_CACHE_DIR):/data/cache \
 		--name=$(COREBOOT_JENKINS_CONTAINER) \
 		coreboot/coreboot-jenkins-node:$(COREBOOT_IMAGE_TAG)
 
-docker-jenkins-shell: test-docker
-	@if [ ! -d $(COREBOOT_JENKINS_CACHE_DIR) ]; then printf "\nError: %s does not exist.\nPlease run:\nsudo mkdir -p %s\n\n" "$(COREBOOT_JENKINS_CACHE_DIR)" "$(COREBOOT_JENKINS_CACHE_DIR)"; false; fi
+docker-jenkins-shell: test-docker-cache-dir test-docker
 	$(DOCKER) run -u root -it --privileged \
 		--entrypoint="/bin/bash" \
 		-p $(COREBOOT_JENKINS_PORT):49151 \
@@ -186,6 +192,7 @@ docker-livehtml-docs:
 help:
 	@echo "Commands for working with docker images:"
 	@echo "  coreboot-sdk                 - Build coreboot-sdk container"
+	@echo "  coreboot-jenkins-test        - Test the coreboot-jenkins-node build functionality"
 	@echo "  upload-coreboot-sdk          - Upload coreboot-sdk to hub.docker.com"
 	@echo "  coreboot-jenkins-node        - Build coreboot-jenkins-node container"
 	@echo "  upload-coreboot-jenkins-node - Upload coreboot-jenkins-node to hub.docker.com"
@@ -200,7 +207,9 @@ help:
 	@echo "  docker-abuild                - Run abuild under coreboot-sdk"
 	@echo "      <ABUILD_ARGS='-a -B'>"
 	@echo "  docker-what-jenkins-does     - Run 'what-jenkins-does' target"
-	@echo "  docker-shell                 - Bash prompt in coreboot-jenkins-node"
+	@echo "  docker-jenkins-shell         - Bash prompt in coreboot-jenkins-node"
+	@echo "      <USER=root or USER=coreboot>"
+	@echo "  docker-shell                 - Bash prompt in coreboot-sdk"
 	@echo "      <USER=root or USER=coreboot>"
 	@echo "  docker-jenkins-server        - Run coreboot-jenkins-node image (for server)"
 	@echo "  docker-jenkins-attach        - Open shell in running jenkins server"
@@ -214,12 +223,13 @@ help:
 	@echo "  COREBOOT_IMAGE_TAG=$(COREBOOT_IMAGE_TAG)"
 	@echo "  DOCKER_COMMIT=$(DOCKER_COMMIT)"
 
-.PHONY: test-docker test-docker-login
-.PHONY: coreboot-jenkins-node upload-coreboot-jenkins-node
+.PHONY: test-docker test-docker-login test-docker-cache-dir
+.PHONY: coreboot-jenkins-node upload-coreboot-jenkins-node coreboot-jenkins-test
 .PHONY: coreboot-sdk upload-coreboot-sdk
 .PHONY: doc.coreboot.org
-.PHONY: clean-coreboot-containers clean-coreboot-images
+.PHONY: clean-coreboot-containers clean-coreboot-images docker-cleanall
 .PHONY: docker-abuild
-.PHONY: docker-what-jenkins-does docker-shell docker-jenkins-server docker-jenkins-attach
+.PHONY: docker-shell docker-jenkins-shell
+.PHONY: docker-what-jenkins-does docker-jenkins-server docker-jenkins-attach
 .PHONY: docker-build-docs docker-livehtml-docs
 .PHONY: help

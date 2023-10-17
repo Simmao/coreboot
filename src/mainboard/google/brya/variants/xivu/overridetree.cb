@@ -213,7 +213,7 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""ELAN9008""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" =
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "300"
@@ -483,6 +483,14 @@ chip soc/intel/alderlake
 						device ref usb3_port2 on end
 					end
 				end
+			end
+		end
+		device ref hda on
+			chip drivers/sof
+				register "spkr_tplg" = "rt1019"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
 			end
 		end
         end

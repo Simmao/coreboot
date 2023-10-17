@@ -1,32 +1,5 @@
 config SOC_INTEL_METEORLAKE
 	bool
-	help
-	  Intel Meteorlake support. Mainboards should specify the SoC
-	  type using the `SOC_INTEL_METEORLAKE_*` options instead
-	  of selecting this option directly.
-
-config SOC_INTEL_METEORLAKE_U_H
-	bool
-	select SOC_INTEL_METEORLAKE
-	help
-	  Choose this option if your mainboard has a MTL-U (9W or 15W)
-	  or MTL-H (28W or 45W) SoC.
-
-	  Note, the MTL-U/H-Processor Line offered in a 1-Chip Platform
-	  that includes the Compute, SOC, GT, and IOE tile on the same
-	  package.
-
-config SOC_INTEL_METEORLAKE_S
-	bool
-	select SOC_INTEL_METEORLAKE
-	help
-	  Choose this option if your mainboard has a MTL-S (35W or 65W) SoC.
-	  Note, MTL-S SoC combines Compute, GFX, SoC, IOE and PCH die.
-
-if SOC_INTEL_METEORLAKE
-
-config CPU_SPECIFIC_OPTIONS
-	def_bool y
 	select ACPI_INTEL_HARDWARE_SLEEP_VALUES
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES
@@ -58,6 +31,7 @@ config CPU_SPECIFIC_OPTIONS
 	select INTEL_GMA_ACPI
 	select INTEL_GMA_ADD_VBT if RUN_FSP_GOP
 	select INTEL_GMA_OPREGION_2_1
+	select INTEL_GMA_VERSION_2
 	select IOAPIC
 	select MICROCODE_BLOB_UNDISCLOSED
 	select MP_SERVICES_PPI_V2
@@ -110,18 +84,54 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_PCH_CLIENT
 	select SOC_INTEL_COMMON_RESET
 	select SOC_INTEL_COMMON_BLOCK_IOC
+	select SOC_INTEL_CRASHLOG
+	select SOC_INTEL_CSE_LITE_PSR if MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SEND_EOP_LATE if !MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SET_EOP
+	select SOC_INTEL_IOE_DIE_SUPPORT
 	select SOC_INTEL_GFX_NON_PREFETCHABLE_MMIO
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
 	select SSE2
 	select SUPPORT_CPU_UCODE_IN_CBFS
+	select TME_KEY_REGENERATION_ON_WARM_BOOT
 	select TSC_MONOTONIC_TIMER
 	select UDELAY_TSC
 	select UDK_202302_BINDING
 	select X86_CLFLUSH_CAR
 	select X86_INIT_NEED_1_SIPI
 	select INTEL_KEYLOCKER
+	help
+	  Intel Meteorlake support. Mainboards should specify the SoC
+	  type using the `SOC_INTEL_METEORLAKE_*` options instead
+	  of selecting this option directly.
+
+config SOC_INTEL_METEORLAKE_U_H
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-U (9W or 15W)
+	  or MTL-H (28W or 45W) SoC.
+
+	  Note, the MTL-U/H-Processor Line offered in a 1-Chip Platform
+	  that includes the Compute, SOC, GT, and IOE tile on the same
+	  package.
+
+config SOC_INTEL_METEORLAKE_S
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-S (35W or 65W) SoC.
+	  Note, MTL-S SoC combines Compute, GFX, SoC, IOE and PCH die.
+
+config SOC_INTEL_METEORLAKE_PRE_PRODUCTION_SILICON
+	bool
+	default n
+	help
+	  Choose this option if your mainboard has a Meteor Lake pre-production
+	  silicon. Typically known as engineering samples (like ES). This type
+	  of the silicon are very common for early platform development.
+
+if SOC_INTEL_METEORLAKE
 
 config SOC_INTEL_METEORLAKE_TCSS_USB4_SUPPORT
 	bool
@@ -186,10 +196,6 @@ config IFD_CHIPSET
 config IED_REGION_SIZE
 	hex
 	default 0x400000
-
-config HEAP_SIZE
-	hex
-	default 0x10000
 
 # Intel recommends reserving the PCIe TBT root port resources as below:
 # - 42 buses
@@ -347,9 +353,9 @@ config FSP_FD_PATH
 
 config SOC_INTEL_METEORLAKE_DEBUG_CONSENT
 	int "Debug Consent for MTL"
-	# USB DBC is more common for developers so make this default to 3 if
+	# USB DBC is more common for developers so make this default to 6 if
 	# SOC_INTEL_DEBUG_CONSENT=y
-	default 3 if SOC_INTEL_DEBUG_CONSENT
+	default 6 if SOC_INTEL_DEBUG_CONSENT
 	default 0
 	help
 	  This is to control debug interface on SOC.
@@ -357,9 +363,8 @@ config SOC_INTEL_METEORLAKE_DEBUG_CONSENT
 	  PlatformDebugConsent in FspmUpd.h has the details.
 
 	  Desired platform debug type are
-	  0:Disabled, 1:Enabled (DCI OOB+[DbC]), 2:Enabled (DCI OOB),
-	  3:Enabled (USB3 DbC), 4:Enabled (XDP/MIPI60), 5:Enabled (USB2 DbC),
-	  6:Enable (2-wire DCI OOB), 7:Manual
+	  0:Disabled, 2:Enabled Trace Active, 4:Enabled Trace Ready,
+	  6:Enable Trace Power-Off, 7:Manual
 
 config DATA_BUS_WIDTH
 	int
@@ -427,5 +432,18 @@ config PCIE_LTR_MAX_NO_SNOOP_LATENCY
 config IOE_DIE_CLOCK_START
 	int
 	default 6 if SOC_INTEL_METEORLAKE_U_H
+
+config HAVE_BMP_LOGO_COMPRESS_LZMA
+	default n
+
+# The default offset to store CSE RW FW version information is at 68.
+# However, in Intel Meteor Lake based systems that use PSR, the additional
+# size required to keep CSE RW FW version information and PSR back-up status
+# in adjacent CMOS memory at offset 68 is not available. Therefore, we
+# override the default offset to 161, which has enough space to keep both
+# the CSE related information together.
+config SOC_INTEL_CSE_FW_PARTITION_CMOS_OFFSET
+	int
+	default 161
 
 endif

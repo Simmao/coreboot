@@ -6,7 +6,7 @@
 
 #include <types.h>
 
-#define EFS_OFFSET (0xffffff - (0x80000 << CONFIG_AMD_FWM_POSITION_INDEX) + 0x20000 + 1)
+#define EFS_OFFSET CONFIG_AMD_FWM_POSITION
 
 #define EMBEDDED_FW_SIGNATURE			0x55aa55aa
 
@@ -24,7 +24,7 @@
 struct second_gen_efs { /* todo: expand for Server products */
 	uint32_t gen:1; /* Client products only use bit 0 */
 	uint32_t reserved:31;
-} __attribute__((packed));
+} __packed;
 
 #define EFS_SECOND_GEN 0
 
@@ -59,9 +59,8 @@ struct embedded_firmware {
 	uint8_t reserved_4Ah;
 	uint8_t reserved_4Bh;
 	uint32_t reserved_4Ch;
-} __attribute__((packed, aligned(16)));
+} __packed __aligned(16);
 
-bool efs_is_valid(void);
 bool read_efs_spi_settings(uint8_t *mode, uint8_t *speed);
 
 #endif  /* AMD_COMMON_PSP_EFS_H */

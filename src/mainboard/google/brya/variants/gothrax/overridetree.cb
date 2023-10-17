@@ -207,18 +207,20 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref i2c1 on
-			chip drivers/i2c/generic
-				register "hid" = ""ELAN0001""
-				register "desc" = ""ELAN Touchscreen""
-				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "detect" = "1"
-				register "reset_gpio" =
-						"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
-				register "reset_delay_ms" = "20"
-				register "enable_gpio" =
-						"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
-				register "enable_delay_ms" = "1"
-				register "has_power_resource" = "1"
+			chip drivers/i2c/hid
+				register "generic.hid" = ""ELAN7B13""
+				register "generic.desc" = ""ELAN Touchscreen""
+				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
+				register "generic.detect" = "1"
+				register "generic.reset_gpio" =
+					"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
+				register "generic.reset_delay_ms" = "300"
+				register "generic.reset_off_delay_ms" = "2"
+				register "generic.enable_gpio" =
+					"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
+				register "generic.enable_delay_ms" = "6"
+				register "generic.has_power_resource" = "1"
+				register "hid_desc_reg_offset" = "0x01"
 				device i2c 0x10 on end
 			end
 		end
@@ -227,14 +229,14 @@ chip soc/intel/alderlake
 				register "desc" = ""SAR2 Proximity Sensor""
 				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_H19_IRQ)"
 				register "speed" = "I2C_SPEED_FAST"
-				register "uid" = "2"
+				register "uid" = "1"
 				register "reg_gnrl_ctrl0" = "0x16"
 				register "reg_gnrl_ctrl1" = "0x21"
-				register "reg_afe_ctrl0" = "0x00"
+				register "reg_afe_ctrl0" = "0x20"
 				register "reg_afe_ctrl1" = "0x10"
 				register "reg_afe_ctrl2" = "0x00"
-				register "reg_afe_ctrl3" = "0x00"
-				register "reg_afe_ctrl4" = "0x07"
+				register "reg_afe_ctrl3" = "0x01"
+				register "reg_afe_ctrl4" = "0x46"
 				register "reg_afe_ctrl5" = "0x00"
 				register "reg_afe_ctrl6" = "0x00"
 				register "reg_afe_ctrl7" = "0x07"
@@ -459,6 +461,14 @@ chip soc/intel/alderlake
 						device ref usb3_port3 on end
 					end
 				end
+			end
+		end
+		device ref hda on
+			chip drivers/sof
+				register "spkr_tplg" = "rt1019"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on end
 			end
 		end
 	end

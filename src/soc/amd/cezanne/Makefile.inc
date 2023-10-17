@@ -37,22 +37,7 @@ smm-$(CONFIG_DEBUG_SMI) += uart.c
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/include
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/cezanne
-
-# ROMSIG Normally At ROMBASE + 0x20000
-# Overridden by CONFIG_AMD_FWM_POSITION_INDEX
-# +-----------+---------------+----------------+------------+
-# |0x55AA55AA |               |                |            |
-# +-----------+---------------+----------------+------------+
-# |           |  PSPDIR ADDR  |  BIOSDIR ADDR  |
-# +-----------+---------------+----------------+
-
-$(if $(CONFIG_AMD_FWM_POSITION_INDEX), ,\
-     $(error Invalid AMD firmware position index. Check if the board sets a valid ROM size))
-
-CEZANNE_FWM_POSITION=$(call int-add, \
-	$(call int-subtract, 0xffffffff \
-	$(call int-shift-left, \
-	0x80000 $(CONFIG_AMD_FWM_POSITION_INDEX))) 0x20000 1)
+CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/common
 
 # 0x40 accounts for the cbfs_file struct + filename + metadata structs, aligned to 64 bytes
 # Building the cbfs image will fail if the offset isn't large enough
@@ -106,9 +91,7 @@ PSP_WHITELIST_FILE=$(CONFIG_PSP_WHITELIST_FILE)
 endif
 
 # type = 0x55
-ifeq ($(CONFIG_HAVE_SPL_FILE),y)
 SPL_TABLE_FILE=$(CONFIG_SPL_TABLE_FILE)
-endif
 
 #
 # BIOS Directory Table items - proper ordering is managed by amdfwtool
@@ -126,10 +109,12 @@ PSP_ELF_FILE=$(objcbfs)/bootblock.elf
 PSP_BIOSBIN_SIZE=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$5}')
 PSP_BIOSBIN_DEST=$(shell $(READELF_bootblock) -Wl $(PSP_ELF_FILE) | grep LOAD | awk '{print $$3}')
 
+ifneq ($(CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE),y)
 # type = 0x63 - construct APOB NV base/size from flash map
 # The flashmap section used for this is expected to be named RW_MRC_CACHE
 APOB_NV_SIZE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_SIZE)
 APOB_NV_BASE=$(call get_fmap_value,FMAP_SECTION_RW_MRC_CACHE_START)
+endif # !CONFIG_SOC_AMD_COMMON_BLOCK_APOB_NV_DISABLE
 
 ifeq ($(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),y)
 # type = 0x6B - PSP Shared memory location
@@ -219,7 +204,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_APOB_NV_BASE) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
-		--location $(call _tohex,$(CEZANNE_FWM_POSITION)) \
+		--location $(CONFIG_AMD_FWM_POSITION) \
 		--multilevel \
 		--output $@
 

@@ -17,6 +17,9 @@ chip soc/intel/alderlake
 	# FSP Silicon
 	register "eist_enable"			= "1"
 
+	register "cnvi_bt_core"			= "1"
+	register "cnvi_bt_audio_offload"	= "1"
+
 	# Serial I/O
 	register "serial_io_i2c_mode" = "{
 		[PchSerialIoIndexI2C0]		= PchSerialIoPci,
@@ -49,7 +52,6 @@ chip soc/intel/alderlake
 			}"
 		end
 		device ref gna		on  end
-		device ref crashlog	off end
 		device ref xhci		on
 			# Motherboard USB Type C
 			register "usb2_ports[0]"		= "USB2_PORT_MID(OC5)"
@@ -85,7 +87,12 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref shared_sram	on  end
-		device ref heci1	on  end
+		device ref cnvi_wifi	on
+			chip drivers/wifi/generic
+				register "wake"			= "GPE0_PME_B0"
+				device generic 0 on end
+			end
+		end
 		device ref sata		on
 			register "sata_salp_support"		= "1"
 			register "sata_ports_enable[1]"		= "1"
@@ -164,7 +171,6 @@ chip soc/intel/alderlake
 				device pnp 4e.19 off end			# Power Management Channel 5
 			end
 		end
-		device ref p2sb		on  end
 		device ref hda		on
 			register "pch_hda_audio_link_hda_enable"	= "1"
 			register "pch_hda_idisp_codec_enable"		= "1"

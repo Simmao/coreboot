@@ -23,6 +23,15 @@ chip soc/intel/alderlake
 		.vnn_icc_max_ma = 500,
 	}"
 
+	register "serial_io_i2c_mode" = "{
+		[PchSerialIoIndexI2C0] = PchSerialIoPci,
+		[PchSerialIoIndexI2C1] = PchSerialIoPci,
+		[PchSerialIoIndexI2C2] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C3] = PchSerialIoPci,
+		[PchSerialIoIndexI2C4] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C5] = PchSerialIoPci,
+	}"
+
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
 	#| Field             |  Value                    |
@@ -31,7 +40,6 @@ chip soc/intel/alderlake
 	#|                   | required to set up a BAR  |
 	#|                   | for TPM communication     |
 	#| I2C1              | Touchscreen               |
-	#| I2C2              | TOF/ALS                   |
 	#| I2C3              | Audio                     |
 	#| I2C5              | Trackpad                  |
 	#+-------------------+---------------------------+
@@ -47,15 +55,6 @@ chip soc/intel/alderlake
 			}
 		},
 		.i2c[1] = {
-			.speed = I2C_SPEED_FAST,
-			.speed_config[0] = {
-				.speed = I2C_SPEED_FAST,
-				.scl_lcnt = 158,
-				.scl_hcnt = 79,
-				.sda_hold = 7,
-			}
-		},
-		.i2c[2] = {
 			.speed = I2C_SPEED_FAST,
 			.speed_config[0] = {
 				.speed = I2C_SPEED_FAST,
@@ -148,7 +147,7 @@ chip soc/intel/alderlake
 				register "generic.hid" = ""ELAN9004""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
-				register "generic.probed" = "1"
+				register "generic.detect" = "1"
 				register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C1)"
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"

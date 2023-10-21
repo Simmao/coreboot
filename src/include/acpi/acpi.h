@@ -70,6 +70,7 @@ enum coreboot_acpi_ids {
 	COREBOOT_ACPI_ID_CBTABLE	= 0x0000, /* BOOT0000 */
 	COREBOOT_ACPI_ID_IGD_GMBUS_ARB  = 0x0001, /* BOOT0001 */
 	COREBOOT_ACPI_ID_IGD_GMBUS_LINK = 0x0002, /* BOOT0002 */
+	COREBOOT_ACPI_ID_AMDGFX_ACP	= 0x0003, /* BOOT0003 */
 	COREBOOT_ACPI_ID_MAX		= 0xFFFF, /* BOOTFFFF */
 };
 
@@ -454,7 +455,7 @@ typedef struct acpi_lpi_desc_hdr {
 } __packed acpi_lpi_desc_hdr_t;
 
 #define ACPI_LPIT_CTR_FREQ_TSC	0
-#define ACPI_LPIT_SLP_S0_FREQ	0
+
 
 /* LPIT: Native C-state instruction based LPI structure */
 typedef struct acpi_lpi_desc_ncst {

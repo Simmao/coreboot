@@ -238,6 +238,12 @@ static void fill_fspm_vr_config_params(FSP_M_CONFIG *m_cfg,
 				m_cfg->IccLimit[domain] = config->fast_vmode_i_trip[domain];
 			}
 		}
+		if (config->ps_cur_1_threshold[domain])
+			m_cfg->Psi1Threshold[domain] = config->ps_cur_1_threshold[domain];
+		if (config->ps_cur_2_threshold[domain])
+			m_cfg->Psi2Threshold[domain] = config->ps_cur_2_threshold[domain];
+		if (config->ps_cur_3_threshold[domain])
+			m_cfg->Psi3Threshold[domain] = config->ps_cur_3_threshold[domain];
 	}
 }
 
@@ -257,6 +263,11 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->SkipMbpHob = !CONFIG(FSP_PUBLISH_MBP_HOB);
 
 	m_cfg->SkipExtGfxScan = config->skip_ext_gfx_scan;
+
+	/* Set PsysPmax if it is available in DT.
+	   PsysPmax is in unit of 1/8 Watt */
+	if (config->psys_pmax_watts)
+		m_cfg->PsysPmax = config->psys_pmax_watts * 8;
 }
 
 static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
@@ -356,6 +367,25 @@ static void fill_fspm_trace_params(FSP_M_CONFIG *m_cfg,
 	}
 }
 
+static void fill_fspm_ibecc_params(FSP_M_CONFIG *m_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	/* In-Band ECC configuration */
+	if (config->ibecc.enable) {
+		m_cfg->Ibecc = config->ibecc.enable;
+		m_cfg->IbeccParity = config->ibecc.parity_en;
+		m_cfg->IbeccOperationMode = config->ibecc.mode;
+		if (m_cfg->IbeccOperationMode == IBECC_MODE_PER_REGION) {
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionEnable,
+				       config->ibecc.region_enable);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionBase,
+				       config->ibecc.region_base);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionMask,
+				       config->ibecc.region_mask);
+		}
+	}
+}
+
 static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
@@ -378,6 +408,7 @@ static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		fill_fspm_vtd_params,
 		fill_fspm_trace_params,
 		fill_fspm_vr_config_params,
+		fill_fspm_ibecc_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fspm_params); i++)

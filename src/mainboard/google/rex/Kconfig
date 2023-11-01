@@ -53,7 +53,6 @@ config BOARD_GOOGLE_MODEL_REX
 	select DRIVERS_GENERIC_MAX98357A
 	select DRIVERS_GENESYSLOGIC_GL9755
 	select DRIVERS_I2C_SX9324
-	select DRIVERS_I2C_SX9324_SUPPORT_LEGACY_LINUX_DRIVER
 	select DRIVERS_INTEL_ISH
 	select DRIVERS_INTEL_SOUNDWIRE
 	select DRIVERS_NXP_UWB_SR1XX
@@ -96,6 +95,10 @@ config BOARD_GOOGLE_MODEL_OVIS
 	def_bool n
 	select BOARD_GOOGLE_BASEBOARD_OVIS
 
+config BOARD_GOOGLE_MODEL_DEKU
+	def_bool n
+	select BOARD_GOOGLE_BASEBOARD_OVIS
+
 config BOARD_GOOGLE_REX0
 	select BOARD_GOOGLE_MODEL_REX
 
@@ -118,6 +121,12 @@ config BOARD_GOOGLE_REX_EC_ISH
 
 config BOARD_GOOGLE_OVIS
 	select BOARD_GOOGLE_MODEL_OVIS
+
+config BOARD_GOOGLE_DEKU
+	select BOARD_GOOGLE_MODEL_DEKU
+
+config BOARD_GOOGLE_DEKU4ES
+	select BOARD_GOOGLE_MODEL_DEKU
 
 config BOARD_GOOGLE_OVIS4ES
 	select BOARD_GOOGLE_MODEL_OVIS
@@ -154,6 +163,7 @@ config CHROMEOS_WIFI_SAR
 	select USE_SAR
 
 config DEVICETREE
+	default "variants/baseboard/\$(CONFIG_BASEBOARD_DIR)/devicetree_pre_prod.cb" if SOC_INTEL_METEORLAKE_PRE_PRODUCTION_SILICON
 	default "variants/baseboard/\$(CONFIG_BASEBOARD_DIR)/devicetree.cb"
 
 config FMDFILE
@@ -181,6 +191,8 @@ config MAINBOARD_PART_NUMBER
 	default "Karis4ES" if BOARD_GOOGLE_KARIS4ES
 	default "Ovis" if BOARD_GOOGLE_OVIS
 	default "Ovis4ES" if BOARD_GOOGLE_OVIS4ES
+	default "Deku" if BOARD_GOOGLE_DEKU
+	default "Deku4ES" if BOARD_GOOGLE_DEKU4ES
 
 config VARIANT_DIR
 	string
@@ -188,6 +200,7 @@ config VARIANT_DIR
 	default "screebo" if BOARD_GOOGLE_MODEL_SCREEBO
 	default "karis" if BOARD_GOOGLE_MODEL_KARIS
 	default "ovis" if BOARD_GOOGLE_MODEL_OVIS
+	default "deku" if BOARD_GOOGLE_MODEL_DEKU
 
 config DIMM_SPD_SIZE
 	default 512
@@ -209,7 +222,7 @@ config OVERRIDE_DEVICETREE
 
 config DRIVER_TPM_I2C_BUS
 	hex
-	default 0x4 if BOARD_GOOGLE_MODEL_REX || BOARD_GOOGLE_MODEL_SCREEBO || BOARD_GOOGLE_MODEL_OVIS || BOARD_GOOGLE_MODEL_KARIS
+	default 0x4 if BOARD_GOOGLE_MODEL_REX || BOARD_GOOGLE_MODEL_SCREEBO || BOARD_GOOGLE_MODEL_OVIS || BOARD_GOOGLE_MODEL_KARIS || BOARD_GOOGLE_MODEL_DEKU
 
 config DRIVER_TPM_I2C_ADDR
 	hex
@@ -224,5 +237,18 @@ config USE_PM_ACPI_TIMER
 
 config HAVE_SLP_S0_GATE
 	def_bool n
+
+choice
+	prompt "Choose desired processor power limits (PLs)"
+	default PL_BASELINE if BOARD_GOOGLE_MODEL_SCREEBO
+	default PL_PERFORMANCE
+
+config PL_PERFORMANCE
+	bool "Performance: Maximum PLs for maximum performance"
+
+config PL_BASELINE
+	bool "Baseline: Baseline PLs for balanced performance at lower power"
+
+endchoice
 
 endif # BOARD_GOOGLE_REX_COMMON

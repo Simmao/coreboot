@@ -1,9 +1,10 @@
 chip soc/intel/skylake
 
-	# SATA port 0
-	register "SataPortsEnable[0]" = "1"
-	register "SataPortsEnable[1]" = "1"
-	register "SataPortsEnable[2]" = "1"
+	register "SataPortsEnable" = "{
+		[0] = 1,
+		[1] = 1,
+		[2] = 1,
+	}"
 
 	# Enable deep Sx states
 	register "deep_s5_enable_ac" = "1"
@@ -29,55 +30,55 @@ chip soc/intel/skylake
 	#* VrVoltageLimit command not sent.
 
 	register "domain_vr_config[VR_SYSTEM_AGENT]" = "{
-		.vr_config_enable = 1, \
-		.psi1threshold = VR_CFG_AMP(20), \
-		.psi2threshold = VR_CFG_AMP(5), \
-		.psi3threshold = VR_CFG_AMP(1), \
-		.psi3enable = 1, \
-		.psi4enable = 1, \
-		.imon_slope = 0, \
-		.imon_offset = 0, \
-		.icc_max = 0, \
-		.voltage_limit = 0 \
+		.vr_config_enable = 1,
+		.psi1threshold = VR_CFG_AMP(20),
+		.psi2threshold = VR_CFG_AMP(5),
+		.psi3threshold = VR_CFG_AMP(1),
+		.psi3enable = 1,
+		.psi4enable = 1,
+		.imon_slope = 0,
+		.imon_offset = 0,
+		.icc_max = 0,
+		.voltage_limit = 0
 	}"
 
 	register "domain_vr_config[VR_IA_CORE]" = "{
-		.vr_config_enable = 1, \
-		.psi1threshold = VR_CFG_AMP(20), \
-		.psi2threshold = VR_CFG_AMP(5), \
-		.psi3threshold = VR_CFG_AMP(1), \
-		.psi3enable = 1, \
-		.psi4enable = 1, \
-		.imon_slope = 0, \
-		.imon_offset = 0, \
-		.icc_max = 0, \
-		.voltage_limit = 0 \
+		.vr_config_enable = 1,
+		.psi1threshold = VR_CFG_AMP(20),
+		.psi2threshold = VR_CFG_AMP(5),
+		.psi3threshold = VR_CFG_AMP(1),
+		.psi3enable = 1,
+		.psi4enable = 1,
+		.imon_slope = 0,
+		.imon_offset = 0,
+		.icc_max = 0,
+		.voltage_limit = 0
 	}"
 
 	register "domain_vr_config[VR_GT_UNSLICED]" = "{
-		.vr_config_enable = 1, \
-		.psi1threshold = VR_CFG_AMP(20), \
-		.psi2threshold = VR_CFG_AMP(5), \
-		.psi3threshold = VR_CFG_AMP(1), \
-		.psi3enable = 1, \
-		.psi4enable = 1, \
-		.imon_slope = 0, \
-		.imon_offset = 0, \
-		.icc_max = 0 ,\
-		.voltage_limit = 0 \
+		.vr_config_enable = 1,
+		.psi1threshold = VR_CFG_AMP(20),
+		.psi2threshold = VR_CFG_AMP(5),
+		.psi3threshold = VR_CFG_AMP(1),
+		.psi3enable = 1,
+		.psi4enable = 1,
+		.imon_slope = 0,
+		.imon_offset = 0,
+		.icc_max = 0,
+		.voltage_limit = 0
 	}"
 
 	register "domain_vr_config[VR_GT_SLICED]" = "{
-		.vr_config_enable = 1, \
-		.psi1threshold = VR_CFG_AMP(20), \
-		.psi2threshold = VR_CFG_AMP(5), \
-		.psi3threshold = VR_CFG_AMP(1), \
-		.psi3enable = 1, \
-		.psi4enable = 1, \
-		.imon_slope = 0, \
-		.imon_offset = 0, \
-		.icc_max = 0, \
-		.voltage_limit = 0 \
+		.vr_config_enable = 1,
+		.psi1threshold = VR_CFG_AMP(20),
+		.psi2threshold = VR_CFG_AMP(5),
+		.psi3threshold = VR_CFG_AMP(1),
+		.psi3enable = 1,
+		.psi4enable = 1,
+		.imon_slope = 0,
+		.imon_offset = 0,
+		.icc_max = 0,
+		.voltage_limit = 0
 	}"
 
 	# Enable Root ports.
@@ -112,39 +113,41 @@ chip soc/intel/skylake
 	# RP 9 uses CLK SRC 1#
 	register "PcieRpClkSrcNumber[8]" = "1"
 
-	# USB 2.0 Enable all ports
-	register "usb2_ports[0]" = "USB2_PORT_MAX(OC0)"		# TYPE-A Port
-	register "usb2_ports[1]" = "USB2_PORT_MAX(OC2)"		# TYPE-A Port
-	register "usb2_ports[2]" = "USB2_PORT_MAX(OC_SKIP)"	# Bluetooth
-	register "usb2_ports[4]" = "USB2_PORT_MAX(OC1)"		# Type-A Port
-	register "usb2_ports[5]" = "USB2_PORT_MAX(OC_SKIP)"	# TYPE-A Port
-	register "usb2_ports[6]" = "USB2_PORT_MAX(OC2)"		# TYPE-A Port
-	register "usb2_ports[7]" = "USB2_PORT_MAX(OC2)"		# TYPE-A Port
-	register "usb2_ports[8]" = "USB2_PORT_MAX(OC_SKIP)"	# TYPE-A Port
-	register "usb2_ports[9]" = "USB2_PORT_MAX(OC_SKIP)"	# TYPE-A Port
-	register "usb2_ports[10]" = "USB2_PORT_MAX(OC_SKIP)"	# TYPE-A Port
-	register "usb2_ports[11]" = "USB2_PORT_MAX(OC_SKIP)"	# TYPE-A Port
+	register "usb2_ports" = "{
+		[0] = USB2_PORT_MAX(OC0),	/* TYPE-A Port */
+		[1] = USB2_PORT_MAX(OC2),	/* TYPE-A Port */
+		[2] = USB2_PORT_MAX(OC_SKIP),	/* Bluetooth */
+		[4] = USB2_PORT_MAX(OC1),	/* Type-A Port */
+		[5] = USB2_PORT_MAX(OC_SKIP),	/* TYPE-A Port */
+		[6] = USB2_PORT_MAX(OC2),	/* TYPE-A Port */
+		[7] = USB2_PORT_MAX(OC2),	/* TYPE-A Port */
+		[8] = USB2_PORT_MAX(OC_SKIP),	/* TYPE-A Port */
+		[9] = USB2_PORT_MAX(OC_SKIP),	/* TYPE-A Port */
+		[10] = USB2_PORT_MAX(OC_SKIP),	/* TYPE-A Port */
+		[11] = USB2_PORT_MAX(OC_SKIP),	/* TYPE-A Port */
+	}"
 
-	# USB 3.0 Enable Port 1-4. Port 5 & 6 Disabled
-	register "usb3_ports[0]" = "USB3_PORT_DEFAULT(OC0)"	# TYPE-A Port
-	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC_SKIP)"	# TYPE-A Port
-	register "usb3_ports[2]" = "USB3_PORT_DEFAULT(OC_SKIP)"	# TYPE-A Port
-	register "usb3_ports[3]" = "USB3_PORT_DEFAULT(OC1)"	# TYPE-A Port
-	register "usb3_ports[4]" = "USB3_PORT_DEFAULT(OC2)"	# TYPE-A Port
-	register "usb3_ports[5]" = "USB3_PORT_DEFAULT(OC_SKIP)"	# TYPE-A Port
+	register "usb3_ports" = "{
+		[0] = USB3_PORT_DEFAULT(OC0),		/* TYPE-A Port */
+		[1] = USB3_PORT_DEFAULT(OC_SKIP),	/* TYPE-A Port */
+		[2] = USB3_PORT_DEFAULT(OC_SKIP),	/* TYPE-A Port */
+		[3] = USB3_PORT_DEFAULT(OC1),		/* TYPE-A Port */
+		[4] = USB3_PORT_DEFAULT(OC2),		/* TYPE-A Port */
+		[5] = USB3_PORT_DEFAULT(OC_SKIP),	/* TYPE-A Port */
+	}"
 
-	register "SerialIoDevMode" = "{ \
-		[PchSerialIoIndexI2C0]  = PchSerialIoPci, \
-		[PchSerialIoIndexI2C1]  = PchSerialIoPci, \
-		[PchSerialIoIndexI2C2]  = PchSerialIoDisabled, \
-		[PchSerialIoIndexI2C3]  = PchSerialIoDisabled, \
-		[PchSerialIoIndexI2C4]  = PchSerialIoPci, \
-		[PchSerialIoIndexI2C5]  = PchSerialIoDisabled, \
-		[PchSerialIoIndexSpi0]  = PchSerialIoDisabled, \
-		[PchSerialIoIndexSpi1]  = PchSerialIoDisabled, \
-		[PchSerialIoIndexUart0] = PchSerialIoPci, \
-		[PchSerialIoIndexUart1] = PchSerialIoDisabled, \
-		[PchSerialIoIndexUart2] = PchSerialIoSkipInit, \
+	register "SerialIoDevMode" = "{
+		[PchSerialIoIndexI2C0]  = PchSerialIoPci,
+		[PchSerialIoIndexI2C1]  = PchSerialIoPci,
+		[PchSerialIoIndexI2C2]  = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C3]  = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C4]  = PchSerialIoPci,
+		[PchSerialIoIndexI2C5]  = PchSerialIoDisabled,
+		[PchSerialIoIndexSpi0]  = PchSerialIoDisabled,
+		[PchSerialIoIndexSpi1]  = PchSerialIoDisabled,
+		[PchSerialIoIndexUart0] = PchSerialIoPci,
+		[PchSerialIoIndexUart1] = PchSerialIoDisabled,
+		[PchSerialIoIndexUart2] = PchSerialIoSkipInit,
 	}"
 
 	# Use default SD card detect GPIO configuration

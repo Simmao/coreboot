@@ -18,13 +18,32 @@
 #include <soc/usb.h>
 #include <stdint.h>
 
+/* Define config parameters for In-Band ECC (IBECC). */
+#define MAX_IBECC_REGIONS 8
+
 #define MAX_SAGV_POINTS 4
 #define MAX_HD_AUDIO_SDI_LINKS 2
 
+/* In-Band ECC Operation Mode */
+enum ibecc_mode {
+	IBECC_MODE_PER_REGION,
+	IBECC_MODE_NONE,
+	IBECC_MODE_ALL
+};
+
+struct ibecc_config {
+	bool enable;
+	bool parity_en;
+	enum ibecc_mode mode;
+	bool region_enable[MAX_IBECC_REGIONS];
+	uint16_t region_base[MAX_IBECC_REGIONS];
+	uint16_t region_mask[MAX_IBECC_REGIONS];
+};
+
 /* Types of different SKUs */
 enum soc_intel_meteorlake_power_limits {
-	MTL_P_282_CORE,
-	MTL_P_682_CORE,
+	MTL_P_282_242_CORE,
+	MTL_P_682_482_CORE,
 	MTL_POWER_LIMITS_COUNT
 };
 
@@ -40,8 +59,10 @@ static const struct {
 	enum soc_intel_meteorlake_power_limits limits;
 	enum soc_intel_meteorlake_cpu_tdps cpu_tdp;
 } cpuid_to_mtl[] = {
-	{ PCI_DID_INTEL_MTL_P_ID_2, MTL_P_282_CORE, TDP_15W },
-	{ PCI_DID_INTEL_MTL_P_ID_1, MTL_P_682_CORE, TDP_28W },
+	{ PCI_DID_INTEL_MTL_P_ID_5, MTL_P_282_242_CORE, TDP_15W },
+	{ PCI_DID_INTEL_MTL_P_ID_2, MTL_P_282_242_CORE, TDP_15W },
+	{ PCI_DID_INTEL_MTL_P_ID_3, MTL_P_682_482_CORE, TDP_28W },
+	{ PCI_DID_INTEL_MTL_P_ID_1, MTL_P_682_482_CORE, TDP_28W },
 };
 
 /* Types of display ports */
@@ -149,6 +170,9 @@ struct soc_intel_meteorlake_config {
 
 	/* TCC activation offset */
 	uint32_t tcc_offset;
+
+	/* In-Band ECC (IBECC) configuration */
+	struct ibecc_config ibecc;
 
 	/* System Agent dynamic frequency support. Only effects ULX/ULT CPUs.
 	 * When enabled memory will be training at two different frequencies.
@@ -281,6 +305,30 @@ struct soc_intel_meteorlake_config {
 	 * is enabled.
 	 */
 	uint16_t fast_vmode_i_trip[NUM_VR_DOMAINS];
+
+	/*
+	 * Power state current threshold 1.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_1_threshold[NUM_VR_DOMAINS];
+
+	/*
+	 * Power state current threshold 2.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_2_threshold[NUM_VR_DOMAINS];
+
+	/*
+	 * Power state current threshold 3.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_3_threshold[NUM_VR_DOMAINS];
 
 	uint8_t PmTimerDisabled;
 	/*
@@ -448,6 +496,9 @@ struct soc_intel_meteorlake_config {
 	 * Set this to 1 in order to reduce BasicMemoryTest size
 	 */
 	bool lower_basic_mem_test_size;
+
+	/* Platform Power Pmax in Watts. Zero means automatic. */
+	uint16_t psys_pmax_watts;
 };
 
 typedef struct soc_intel_meteorlake_config config_t;

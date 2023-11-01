@@ -126,59 +126,63 @@ chip soc/intel/skylake
 	# USB related
 	register "SsicPortEnable" = "1"
 
-	register "usb2_ports[0]" = "USB2_PORT_MID(OC_SKIP)"  # OTG
-	register "usb2_ports[1]" = "USB2_PORT_MID(OC3)"  # Touch Pad
-	register "usb2_ports[2]" = "USB2_PORT_MID(OC_SKIP)"  # M.2 BT
-	register "usb2_ports[3]" = "USB2_PORT_MID(OC_SKIP)"  # Touch Panel
-	register "usb2_ports[4]" = "USB2_PORT_MID(OC_SKIP)"  # M.2 WWAN
-	register "usb2_ports[5]" = "USB2_PORT_MID(OC0)"  # Front Panel
-	register "usb2_ports[6]" = "USB2_PORT_MID(OC0)"  # Front Panel
-	register "usb2_ports[7]" = "USB2_PORT_MID(OC2)"  # Stacked conn (lan + usb)
-	register "usb2_ports[8]" = "USB2_PORT_MID(OC2)"  # Stacked conn (lan + usb)
-	register "usb2_ports[9]" = "USB2_PORT_MID(OC1)"  # LAN MAGJACK
-	register "usb2_ports[10]" = "USB2_PORT_MID(OC1)" # LAN MAGJACK
-	register "usb2_ports[11]" = "USB2_PORT_MID(OC_SKIP)" # Finger print sensor
-	register "usb2_ports[12]" = "USB2_PORT_MID(OC4)" # USB 2 stack conn
-	register "usb2_ports[13]" = "USB2_PORT_MID(OC4)" # USB 2 stack conn
+	register "usb2_ports" = "{
+		[0] = USB2_PORT_MID(OC_SKIP),	/* OTG */
+		[1] = USB2_PORT_MID(OC3),	/* Touch Pad */
+		[2] = USB2_PORT_MID(OC_SKIP),	/* M.2 BT */
+		[3] = USB2_PORT_MID(OC_SKIP),	/* Touch Panel */
+		[4] = USB2_PORT_MID(OC_SKIP),	/* M.2 WWAN */
+		[5] = USB2_PORT_MID(OC0),	/* Front Panel */
+		[6] = USB2_PORT_MID(OC0),	/* Front Panel */
+		[7] = USB2_PORT_MID(OC2),	/* Stacked conn (lan + usb) */
+		[8] = USB2_PORT_MID(OC2),	/* Stacked conn (lan + usb) */
+		[9] = USB2_PORT_MID(OC1),	/* LAN MAGJACK */
+		[10] = USB2_PORT_MID(OC1),	/* LAN MAGJACK */
+		[11] = USB2_PORT_MID(OC_SKIP),	/* Finger print sensor */
+		[12] = USB2_PORT_MID(OC4),	/* USB 2 stack conn */
+		[13] = USB2_PORT_MID(OC4),	/* USB 2 stack conn */
+	}"
 
-	register "usb3_ports[0]" = "USB3_PORT_DEFAULT(OC5)" # OTG
-	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC_SKIP)" # M.2 WWAN
-	register "usb3_ports[2]" = "USB3_PORT_DEFAULT(OC3)" # Flex
-	register "usb3_ports[3]" = "USB3_PORT_DEFAULT(OC_SKIP)" # IVCAM
-	register "usb3_ports[4]" = "USB3_PORT_DEFAULT(OC1)" # LAN MAGJACK
-	register "usb3_ports[5]" = "USB3_PORT_DEFAULT(OC0)" # Front Panel
-	register "usb3_ports[6]" = "USB3_PORT_DEFAULT(OC0)" # Front Panel
-	register "usb3_ports[7]" = "USB3_PORT_DEFAULT(OC2)" # Stack Conn
-	register "usb3_ports[8]" = "USB3_PORT_DEFAULT(OC2)" # Stack Conn
-	register "usb3_ports[9]" = "USB3_PORT_DEFAULT(OC1)" # LAN MAGJACK
+	register "usb3_ports" = "{
+		[0] = USB3_PORT_DEFAULT(OC5),		/* OTG */
+		[1] = USB3_PORT_DEFAULT(OC_SKIP),	/* M.2 WWAN */
+		[2] = USB3_PORT_DEFAULT(OC3),		/* Flex */
+		[3] = USB3_PORT_DEFAULT(OC_SKIP),	/* IVCAM */
+		[4] = USB3_PORT_DEFAULT(OC1),		/* LAN MAGJACK */
+		[5] = USB3_PORT_DEFAULT(OC0),		/* Front Panel */
+		[6] = USB3_PORT_DEFAULT(OC0),		/* Front Panel */
+		[7] = USB3_PORT_DEFAULT(OC2),		/* Stack Conn */
+		[8] = USB3_PORT_DEFAULT(OC2),		/* Stack Conn */
+		[9] = USB3_PORT_DEFAULT(OC1),		/* LAN MAGJACK */
+	}"
 
 	register "i2c_voltage[4]" = "I2C_VOLTAGE_1V8"  # I2C4 is 1.8V
 
 	# Must leave UART0 enabled or SD/eMMC will not work as PCI
 
 	register "SataSalpSupport" = "1"
-	register "SataPortsEnable" = "{ \
-		[0]	= 1, \
-		[1]	= 1, \
-		[2]	= 1, \
-		[3]	= 1, \
-		[4]	= 1, \
-		[5]	= 1, \
-		[6]	= 1, \
-		[7]	= 1, \
+	register "SataPortsEnable" = "{
+		[0] = 1,
+		[1] = 1,
+		[2] = 1,
+		[3] = 1,
+		[4] = 1,
+		[5] = 1,
+		[6] = 1,
+		[7] = 1,
 	}"
-	register "SerialIoDevMode" = "{ \
-		[PchSerialIoIndexI2C0]	= PchSerialIoPci, \
-		[PchSerialIoIndexI2C1]	= PchSerialIoPci, \
-		[PchSerialIoIndexI2C2]	= PchSerialIoPci, \
-		[PchSerialIoIndexI2C3]	= PchSerialIoPci, \
-		[PchSerialIoIndexI2C4]	= PchSerialIoPci, \
-		[PchSerialIoIndexI2C5]	= PchSerialIoPci, \
-		[PchSerialIoIndexSpi0]	= PchSerialIoPci, \
-		[PchSerialIoIndexSpi1]	= PchSerialIoPci, \
-		[PchSerialIoIndexUart0]	= PchSerialIoPci, \
-		[PchSerialIoIndexUart1]	= PchSerialIoPci, \
-		[PchSerialIoIndexUart2]	= PchSerialIoSkipInit, \
+	register "SerialIoDevMode" = "{
+		[PchSerialIoIndexI2C0]	= PchSerialIoPci,
+		[PchSerialIoIndexI2C1]	= PchSerialIoPci,
+		[PchSerialIoIndexI2C2]	= PchSerialIoPci,
+		[PchSerialIoIndexI2C3]	= PchSerialIoPci,
+		[PchSerialIoIndexI2C4]	= PchSerialIoPci,
+		[PchSerialIoIndexI2C5]	= PchSerialIoPci,
+		[PchSerialIoIndexSpi0]	= PchSerialIoPci,
+		[PchSerialIoIndexSpi1]	= PchSerialIoPci,
+		[PchSerialIoIndexUart0]	= PchSerialIoPci,
+		[PchSerialIoIndexUart1]	= PchSerialIoPci,
+		[PchSerialIoIndexUart2]	= PchSerialIoSkipInit,
 	}"
 
 	# PL2 override 25W

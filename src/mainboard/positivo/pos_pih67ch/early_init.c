@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <bootblock_common.h>
-#include <northbridge/intel/sandybridge/raminit_native.h>
 #include <southbridge/intel/bd82x6x/pch.h>
 #include <superio/ite/common/ite.h>
 #include <superio/ite/it8728f/it8728f.h>
@@ -54,11 +53,3 @@ const struct southbridge_usb_port mainboard_usb_ports[] = {
 	{ 1, 0, -1 },
 	{ 1, 0, -1 },
 };
-
-void mainboard_get_spd(spd_raw_data *spd, bool id_only)
-{
-	read_spd(&spd[0], 0x50, id_only);
-	read_spd(&spd[1], 0x51, id_only);
-	read_spd(&spd[2], 0x52, id_only);
-	read_spd(&spd[3], 0x53, id_only);
-}

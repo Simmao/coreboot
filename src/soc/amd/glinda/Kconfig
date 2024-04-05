@@ -36,6 +36,7 @@ config SOC_AMD_GLINDA
 	select SOC_AMD_COMMON_BLOCK_ACPI_CPU_POWER_STATE
 	select SOC_AMD_COMMON_BLOCK_ACPI_GPIO		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_ACPI_IVRS		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_ACPI_MADT
 	select SOC_AMD_COMMON_BLOCK_AOAC		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_APOB		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_APOB_HASH		# TODO: Check if this is still correct
@@ -44,8 +45,8 @@ config SOC_AMD_GLINDA
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC_DOMAIN
 	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC_MULTI_PCI_SEGMENT
-	select SOC_AMD_COMMON_BLOCK_DATA_FABRIC_NP_REGION
 	select SOC_AMD_COMMON_BLOCK_ESPI_EXTENDED_DECODE_RANGES # TODO: Check if this is still correct
+	select SOC_AMD_COMMON_BLOCK_GPP_CLK
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI_ALERT_ENABLE # TODO: Check if this is still correct
@@ -75,8 +76,10 @@ config SOC_AMD_GLINDA
 	select SOC_AMD_COMMON_BLOCK_UCODE		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_CCX_CPPC_HOB		# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_DMI_TABLES		# TODO: Check if this is still correct
+	select SOC_AMD_COMMON_FSP_PCIE_CLK_REQ
 	select SOC_AMD_COMMON_FSP_PCI			# TODO: Check if this is still correct
 	select SOC_AMD_COMMON_FSP_PRELOAD_FSPS
+	select SOC_AMD_COMMON_ROMSTAGE_LEGACY_DMA_FIXUP
 	select SSE2
 	select UDK_2017_BINDING
 	select USE_DDR5
@@ -233,15 +236,14 @@ config RO_REGION_ONLY
 	default "apu/amdfw"
 
 config ECAM_MMCONF_BASE_ADDRESS
-	default 0xF8000000
+	default 0xE0000000
 
 config ECAM_MMCONF_BUS_NUMBER
-	default 64
+	default 256
 
 config MAX_CPUS
 	int
-	default 8 if SOC_AMD_GLINDA
-	default 16
+	default 24
 	help
 	  Maximum number of threads the platform can have.
 

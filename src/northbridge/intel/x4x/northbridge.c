@@ -72,7 +72,7 @@ static void mch_domain_set_resources(struct device *dev)
 	for (res = dev->resource_list; res; res = res->next)
 		report_resource_stored(dev, res, "");
 
-	assign_resources(dev->link_list);
+	assign_resources(dev->downstream);
 }
 
 static void mch_domain_init(struct device *dev)
@@ -154,7 +154,7 @@ static void x4x_init(void *const chip_info)
 }
 
 struct chip_operations northbridge_intel_x4x_ops = {
-	CHIP_NAME("Intel 4-Series Northbridge")
+	.name = "Intel 4-Series Northbridge",
 	.init = x4x_init,
 };
 

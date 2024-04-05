@@ -39,6 +39,18 @@ config PLATFORM_USES_FSP2_3
 	  1. Added ExtendedImageRevision field in FSP_INFO_HEADER
 	  2. Added FSP_NON_VOLATILE_STORAGE_HOB2
 
+config PLATFORM_USES_FSP2_4
+	bool
+	default n
+	select PLATFORM_USES_FSP2_3
+	help
+	  Include FSP 2.4 wrappers and functionality.
+	  Features added into FSP 2.4 specification that impact coreboot are:
+	  1. FSP-M multi phase init support
+	  2. FSPM_ARCH2_UPD and FSPS_ARCH2_UPD data structures must be
+	     used in place of FSPM_ARCH_UPD and FSPS_ARCH_UPD respectively
+	  3. 64-bits support
+
 if PLATFORM_USES_FSP2_0
 
 config PLATFORM_USES_FSP2_X86_32
@@ -220,6 +232,17 @@ config FSP_USES_CB_STACK
 	  This option allows fsp to continue using coreboot stack
 	  without reinitializing stack pointer. This feature is
 	  supported Icelake onwards.
+
+config FSP_SPEC_VIOLATION_XEON_SP_HEAP_WORKAROUND
+	bool
+	help
+	 Starting with Intel CPX there is a bug in there reference code during
+	 the pipe init. This code synchronises the CAR between sockets in FSP-M.
+	 This code implicitly assumes that the FSP heap is right above the
+	 RC heap, where both of them are located at the bottom part of CAR.
+	 Select this to have an explicit handling of the FSP StackBase to work
+	 around this issue. This is needed on multi-socket Xeon-SP systems.
+	 This will place the FSP heap right above the FSP-M RC heap.
 
 config FSP_TEMP_RAM_SIZE
 	hex

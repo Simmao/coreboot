@@ -4,6 +4,7 @@
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pnp.h>
+#include <option.h>
 #include <pc80/keyboard.h>
 #include <stdint.h>
 #include "mec5035.h"
@@ -84,6 +85,15 @@ u8 mec5035_mouse_touchpad(u8 setting)
 	return buf[0];
 }
 
+void mec5035_control_radio(enum ec_radio_dev dev, enum ec_radio_state state)
+{
+	/* From LPC traces and userspace testing with other values,
+	   the second byte has to be 2 for an unknown reason. */
+	u8 buf[RADIO_CTRL_NUM_ARGS] = {(u8)dev, 2, (u8)state};
+	write_mailbox_regs(buf, 2, RADIO_CTRL_NUM_ARGS);
+	ec_command(CMD_RADIO_CTRL);
+}
+
 void mec5035_early_init(void)
 {
 	/* If this isn't sent the EC shuts down the system after about 15
@@ -99,6 +109,10 @@ static void mec5035_init(struct device *dev)
 	mec5035_mouse_touchpad(TP_PS2_MOUSE);
 
 	pc_keyboard_init(NO_AUX_DEVICE);
+
+	mec5035_control_radio(RADIO_WLAN, get_uint_option("wlan", RADIO_ON));
+	mec5035_control_radio(RADIO_WWAN, get_uint_option("wwan", RADIO_ON));
+	mec5035_control_radio(RADIO_BT, get_uint_option("bluetooth", RADIO_ON));
 }
 
 static struct device_operations ops = {
@@ -117,6 +131,6 @@ static void mec5035_enable(struct device *dev)
 }
 
 struct chip_operations ec_dell_mec5035_ops = {
-	CHIP_NAME("MEC5035 EC")
+	.name = "MEC5035 EC",
 	.enable_dev = mec5035_enable,
 };

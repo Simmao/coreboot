@@ -45,6 +45,7 @@ enum {
 	ME_LIMIT_REG,
 	TSEG_BASE_REG,
 	TSEG_LIMIT_REG,
+	VTDBAR_REG,
 	/* Must be last. */
 	NUM_MAP_ENTRIES
 };
@@ -64,6 +65,7 @@ static struct map_entry memory_map[NUM_MAP_ENTRIES] = {
 #endif
 		[TSEG_BASE_REG] = MAP_ENTRY_BASE_32(VTD_TSEG_BASE_CSR, "TSEGMB_BASE"),
 		[TSEG_LIMIT_REG] = MAP_ENTRY_LIMIT_32(VTD_TSEG_LIMIT_CSR, 20, "TSEGMB_LIMIT"),
+		[VTDBAR_REG] = MAP_ENTRY_BASE_32(VTD_BAR_CSR, "VTD_BAR"),
 };
 
 static void read_map_entry(struct device *dev, struct map_entry *entry,
@@ -72,7 +74,16 @@ static void read_map_entry(struct device *dev, struct map_entry *entry,
 	uint64_t value;
 	uint64_t mask;
 
-	/* All registers are on a 1MiB granularity. */
+	if (!entry->reg) {
+		*result = 0;
+		return;
+	}
+	if (entry->reg == VTD_BAR_CSR && !(pci_read_config32(dev, entry->reg) & 1)) {
+		/* VTDBAR is not enabled */
+		*result = 0;
+		return;
+	}
+
 	mask = ((1ULL << entry->mask_bits) - 1);
 	mask = ~mask;
 
@@ -103,8 +114,11 @@ static void mc_report_map_entries(struct device *dev, uint64_t *values)
 {
 	int i;
 	for (i = 0; i < NUM_MAP_ENTRIES; i++) {
-		printk(BIOS_DEBUG, "MC MAP: %s: 0x%llx\n",
-		       memory_map[i].description, values[i]);
+		if (!memory_map[i].description)
+			continue;
+
+		printk(BIOS_DEBUG, "%s: MC MAP: %s: 0x%llx\n",
+		       dev_path(dev), memory_map[i].description, values[i]);
 	}
 }
 
@@ -191,13 +205,18 @@ static void mc_add_dram_resources(struct device *dev, int *res_count)
 	int index = *res_count;
 	struct range_entry fsp_mem;
 
-	/* Only add dram resources once. */
-	if (dev->bus->secondary != 0)
-		return;
-
 	/* Read in the MAP registers and report their values. */
 	mc_read_map_entries(dev, &mc_values[0]);
 	mc_report_map_entries(dev, &mc_values[0]);
+
+	if (mc_values[VTDBAR_REG]) {
+		res = mmio_range(dev, VTD_BAR_CSR, mc_values[VTDBAR_REG], 8 * KiB);
+		LOG_RESOURCE("vtd_bar", dev, res);
+	}
+
+	/* Only add dram resources once. */
+	if (dev->upstream->secondary != 0 || dev->upstream->segment_group != 0)
+		return;
 
 	/* Conventional Memory (DOS region, 0x0 to 0x9FFFF) */
 	res = ram_from_to(dev, index++, 0, 0xa0000);
@@ -321,11 +340,13 @@ static void mmapvtd_read_resources(struct device *dev)
 	int index = 0;
 
 	if (CONFIG(SOC_INTEL_HAS_CXL)) {
-		/* Construct NUMA data structure. This is needed for CXL. */
-		if (fill_pds() != CB_SUCCESS)
-			pds.num_pds = 0;
-
-		dump_pds();
+		static bool once;
+		if (!once) {
+			/* Construct NUMA data structure. This is needed for CXL. */
+			fill_pds();
+			dump_pds();
+			once = true;
+		}
 	}
 
 	/* Read standard PCI resources. */
@@ -349,7 +370,7 @@ static struct device_operations mmapvtd_ops = {
 	.init              = mmapvtd_init,
 	.ops_pci           = &soc_pci_ops,
 #if CONFIG(HAVE_ACPI_TABLES)
-	.acpi_inject_dsdt  = uncore_inject_dsdt,
+	.acpi_fill_ssdt  = uncore_fill_ssdt,
 #endif
 };
 

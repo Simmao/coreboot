@@ -1,3 +1,10 @@
+fw_config
+	field THERMAL_SOLUTION 0 0
+		option THERMAL_SOLUTION_6W 0
+		option THERMAL_SOLUTION_15W 1
+	end
+end
+
 chip soc/intel/alderlake
 	register "sagv" = "SaGv_Enabled"
 
@@ -91,6 +98,18 @@ chip soc/intel/alderlake
 
 	register "tcc_offset" = "8"
 
+	register "power_limits_config[ADL_N_041_6W_CORE]" = "{
+		.tdp_pl1_override = 20,
+		.tdp_pl2_override = 25,
+		.tdp_pl4 = 78,
+	}"
+
+	register "power_limits_config[ADL_N_081_15W_CORE]" = "{
+		.tdp_pl1_override = 20,
+		.tdp_pl2_override = 35,
+		.tdp_pl4 = 83,
+	}"
+
 	device domain 0 on
 		device ref dtt on
 			chip drivers/intel/dptf
@@ -98,6 +117,34 @@ chip soc/intel/alderlake
 				register "options.tsr[0].desc" = ""DDR""
 				register "options.tsr[1].desc" = ""charger""
 				register "options.tsr[2].desc" = ""ambient""
+
+				## Active Policy
+				register "policies.active" = "{
+					[0] = {
+						.target = DPTF_CPU,
+						.thresholds = {
+								TEMP_PCT(70, 100),
+								TEMP_PCT(60, 65),
+								TEMP_PCT(42, 60),
+								TEMP_PCT(39, 55),
+								TEMP_PCT(38, 50),
+								TEMP_PCT(35, 43),
+								TEMP_PCT(31, 30),
+						}
+					},
+					[1] = {
+						.target = DPTF_TEMP_SENSOR_0,
+						.thresholds = {
+								TEMP_PCT(60, 100),
+								TEMP_PCT(55, 65),
+								TEMP_PCT(52, 60),
+								TEMP_PCT(50, 55),
+								TEMP_PCT(48, 50),
+								TEMP_PCT(45, 43),
+								TEMP_PCT(41, 30),
+						}
+					}
+				}"
 
 				## Passive Policy
 				register "policies.passive" = "{
@@ -117,8 +164,8 @@ chip soc/intel/alderlake
 
 				register "controls.power_limits" = "{
 					.pl1 = {
-						.min_power = 5500,
-						.max_power = 6000,
+						.min_power = 6000,
+						.max_power = 20000,
 						.time_window_min = 28 * MSECS_PER_SEC,
 						.time_window_max = 28 * MSECS_PER_SEC,
 						.granularity = 500
@@ -139,7 +186,125 @@ chip soc/intel/alderlake
 					[2] = {  16, 1000 },
 					[3] = {   8,  500 }
 				}"
-				device generic 0 on end
+
+				## Fan Performance Control (Percent, Speed, Noise, Power)
+				register "controls.fan_perf" = "{
+					[0] = { 100, 6000, 220, 2200, },
+					[1] = {  92, 5500, 180, 1800, },
+					[2] = {  85, 5000, 145, 1450, },
+					[3] = {  70, 4400, 115, 1150, },
+					[4] = {  56, 3900,  90,  900, },
+					[5] = {  45, 3300,  55,  550, },
+					[6] = {  38, 3000,  30,  300, },
+					[7] = {  33, 2900,  15,  150, },
+					[8] = {  10,  800,  10,  100, },
+					[9] = {   0,    0,   0,   50, }
+				}"
+
+				## Fan options
+				register "options.fan.fine_grained_control" = "1"
+				register "options.fan.step_size" = "2"
+
+				device generic 0 on
+					probe THERMAL_SOLUTION THERMAL_SOLUTION_6W
+				end
+			end
+			chip drivers/intel/dptf
+				## sensor information
+				register "options.tsr[0].desc" = ""DDR""
+				register "options.tsr[1].desc" = ""charger""
+				register "options.tsr[2].desc" = ""ambient""
+
+				## Active Policy
+				register "policies.active" = "{
+					[0] = {
+						.target = DPTF_CPU,
+						.thresholds = {
+								TEMP_PCT(70, 100),
+								TEMP_PCT(60, 65),
+								TEMP_PCT(42, 58),
+								TEMP_PCT(39, 53),
+								TEMP_PCT(38, 47),
+								TEMP_PCT(35, 43),
+								TEMP_PCT(31, 30),
+						}
+					},
+					[1] = {
+						.target = DPTF_TEMP_SENSOR_0,
+						.thresholds = {
+								TEMP_PCT(60, 100),
+								TEMP_PCT(55, 65),
+								TEMP_PCT(52, 58),
+								TEMP_PCT(50, 53),
+								TEMP_PCT(48, 47),
+								TEMP_PCT(45, 43),
+								TEMP_PCT(41, 30),
+						}
+					}
+				}"
+
+				## Passive Policy
+				register "policies.passive" = "{
+					[0] = DPTF_PASSIVE(CPU,         CPU,           95, 5000),
+					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 70, 5000),
+					[2] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_1, 70, 5000),
+					[3] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_2, 70, 5000),
+				}"
+
+				## Critical Policy
+				register "policies.critical" = "{
+					[0] = DPTF_CRITICAL(CPU,               100, SHUTDOWN),
+					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,     95, SHUTDOWN),
+					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,     95, SHUTDOWN),
+					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,     95, SHUTDOWN),
+				}"
+
+				register "controls.power_limits" = "{
+					.pl1 = {
+						.min_power = 15000,
+						.max_power = 20000,
+						.time_window_min = 28 * MSECS_PER_SEC,
+						.time_window_max = 28 * MSECS_PER_SEC,
+						.granularity = 500
+					},
+					.pl2 = {
+						.min_power = 35000,
+						.max_power = 35000,
+						.time_window_min = 32 * MSECS_PER_SEC,
+						.time_window_max = 32 * MSECS_PER_SEC,
+						.granularity = 500
+					}
+				}"
+
+				## Charger Performance Control (Control, mA)
+				register "controls.charger_perf" = "{
+					[0] = { 255, 1700 },
+					[1] = {  24, 1500 },
+					[2] = {  16, 1000 },
+					[3] = {   8,  500 }
+				}"
+
+				## Fan Performance Control (Percent, Speed, Noise, Power)
+				register "controls.fan_perf" = "{
+					[0] = { 100, 6000, 220, 2200, },
+					[1] = {  92, 5500, 180, 1800, },
+					[2] = {  85, 5000, 145, 1450, },
+					[3] = {  70, 4400, 115, 1150, },
+					[4] = {  56, 3900,  90,  900, },
+					[5] = {  45, 3300,  55,  550, },
+					[6] = {  38, 3000,  30,  300, },
+					[7] = {  33, 2900,  15,  150, },
+					[8] = {  10,  800,  10,  100, },
+					[9] = {   0,    0,   0,   50, }
+				}"
+
+				## Fan options
+				register "options.fan.fine_grained_control" = "1"
+				register "options.fan.step_size" = "2"
+
+				device generic 1 on
+					probe THERMAL_SOLUTION THERMAL_SOLUTION_15W
+				end
 			end
 		end
 		device ref i2c1 on
@@ -152,7 +317,7 @@ chip soc/intel/alderlake
 				register "generic.reset_delay_ms" = "20"
 				register "generic.reset_off_delay_ms" = "2"
 				register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
-				register "generic.enable_delay_ms" = "1"
+				register "generic.enable_delay_ms" = "6"
 				register "generic.stop_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
 				register "generic.stop_delay_ms" = "150"
 				register "generic.stop_off_delay_ms" = "2"
@@ -193,8 +358,25 @@ chip soc/intel/alderlake
 				register "hid_desc_reg_offset" = "0x20"
 				device i2c 2c on end
 			end
+			chip drivers/i2c/hid
+				register "generic.hid" = ""PIXA2303""
+				register "generic.desc" = ""PIXA Touchpad""
+				register "generic.irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_F14_IRQ)"
+				register "generic.wake" = "GPE0_DW2_14"
+				register "generic.detect" = "1"
+				register "hid_desc_reg_offset" = "0x20"
+				device i2c 0x68 on end
+			end
 		end
 		device ref pcie_rp7 off end
+		device ref emmc on end
+		device ref ish on
+			chip drivers/intel/ish
+				register "add_acpi_dma_property" = "true"
+				device generic 0 on end
+			end
+		end
+		device ref ufs on end
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"

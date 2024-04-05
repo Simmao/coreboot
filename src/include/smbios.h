@@ -32,7 +32,8 @@ int smbios_write_type9(unsigned long *current, int *handle,
 			const enum slot_data_bus_bandwidth bandwidth,
 			const enum misc_slot_usage usage,
 			const enum misc_slot_length length,
-			const u16 id, u8 slot_char1, u8 slot_char2, u8 bus, u8 dev_func);
+			const u16 id, u8 slot_char1, u8 slot_char2,
+			u8 segment_group, u8 bus, u8 dev_func);
 enum smbios_bmc_interface_type;
 int smbios_write_type38(unsigned long *current, int *handle,
 			const enum smbios_bmc_interface_type interface_type,
@@ -40,7 +41,7 @@ int smbios_write_type38(unsigned long *current, int *handle,
 			const u64 base_addr, const u8 base_modifier,
 			const u8 irq);
 int smbios_write_type41(unsigned long *current, int *handle,
-			const char *name, u8 instance, u16 segment,
+			const char *name, u8 instance, u16 segment_group,
 			u8 bus, u8 device, u8 function, u8 device_type);
 enum smbios_temp_location;
 enum smbios_temp_status;

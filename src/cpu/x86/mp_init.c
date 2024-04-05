@@ -98,6 +98,7 @@ struct sipi_params {
 	uint32_t msr_table_ptr;
 	uint32_t msr_count;
 	uint32_t c_handler;
+	uint32_t cr3;
 	atomic_t ap_count;
 } __packed;
 
@@ -361,6 +362,7 @@ static atomic_t *load_sipi_vector(struct mp_params *mp_params)
 	else
 		sp->microcode_lock = 0;
 	sp->c_handler = (uintptr_t)&ap_init;
+	sp->cr3 = read_cr3();
 	ap_count = &sp->ap_count;
 	atomic_set(ap_count, 0);
 
@@ -763,6 +765,7 @@ static enum cb_err install_relocation_handler(int num_cpus, size_t save_state_si
 		.cpu_save_state_size = save_state_size,
 		.num_concurrent_save_states = 1,
 		.handler = smm_do_relocation,
+		.cr3 = read_cr3(),
 	};
 
 	if (smm_setup_relocation_handler(&smm_params)) {
@@ -787,6 +790,7 @@ static enum cb_err install_permanent_handler(int num_cpus, uintptr_t smbase,
 		.num_cpus = num_cpus,
 		.cpu_save_state_size = save_state_size,
 		.num_concurrent_save_states = num_cpus,
+		.cr3 = read_cr3(),
 	};
 
 	printk(BIOS_DEBUG, "Installing permanent SMM handler to 0x%08lx\n", smbase);
@@ -1087,10 +1091,7 @@ static void fill_mp_state_smm(struct mp_state *state, const struct mp_ops *ops)
 	/*
 	 * Make sure there is enough room for the SMM descriptor
 	 */
-	if (CONFIG(STM)) {
-		state->smm_save_state_size +=
-			ALIGN_UP(sizeof(TXT_PROCESSOR_SMM_DESCRIPTOR), 0x100);
-	}
+	state->smm_save_state_size += STM_PSD_SIZE;
 
 	/*
 	 * Default to smm_initiate_relocation() if trigger callback isn't

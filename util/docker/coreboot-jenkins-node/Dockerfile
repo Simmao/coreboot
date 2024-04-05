@@ -23,14 +23,13 @@ RUN apt-get -y update && \
 		liblua5.4-dev \
 		linkchecker \
 		lua5.4 \
-		meson \
-		ninja-build \
 		openssh-server \
 		parallel \
 		ruby-full \
 		sdcc \
 		python3-pip \
 		pykwalify \
+		python3-venv \
 		python3-yaml \
 		python3-pyelftools \
 		python3-jsonschema \
@@ -55,7 +54,7 @@ RUN mkdir /cb-build && \
 	echo "tmpfs /home/coreboot/.ccache tmpfs rw,mode=1777 0 0" >> /etc/fstab
 
 # Build encapsulate tool
-ADD https://raw.githubusercontent.com/coreboot/encapsulate/main/encapsulate.c /tmp/encapsulate.c
+ADD https://raw.githubusercontent.com/coreboot/encapsulate/master/encapsulate.c /tmp/encapsulate.c
 RUN gcc -o /usr/sbin/encapsulate /tmp/encapsulate.c && \
 	chown root /usr/sbin/encapsulate && \
 	chmod +s /usr/sbin/encapsulate
@@ -70,10 +69,13 @@ ENTRYPOINT mount /cb-build && \
 EXPOSE 49151
 
 USER coreboot
-ENV PATH=$PATH:/home/coreboot/.local/bin
-RUN echo "export PATH=$PATH:/opt/xgcc/bin" >> /home/coreboot/.bashrc && \
-	pip3 install --upgrade --no-cache-dir pip \
-	&& pip3 install --no-cache-dir \
+ENV VIRTUAL_ENV="/home/coreboot/python3"
+ENV PATH=$VIRTUAL_ENV/bin:$PATH:/home/coreboot/.local/bin
+RUN echo 'export PATH=$PATH:/opt/xgcc/bin' >> /home/coreboot/.bashrc && \
+	echo "source ${VIRTUAL_ENV}/bin/activate"  >> /home/coreboot/.bashrc && \
+	python3 -m venv /home/coreboot/python3 && \
+	pip3 install --upgrade --no-cache-dir pip && \
+	pip3 install --no-cache-dir \
 		setuptools==58.2.0 \
 		jinja2==3.1.2 \
 		recommonmark===0.7.1 \
@@ -85,3 +87,4 @@ RUN echo "export PATH=$PATH:/opt/xgcc/bin" >> /home/coreboot/.bashrc && \
 	echo "{{SSH_KEY}}" > /home/coreboot/.ssh/authorized_keys && \
 	chmod 0700 /home/coreboot/.ssh && \
 	chmod 0600 /home/coreboot/.ssh/authorized_keys
+USER root

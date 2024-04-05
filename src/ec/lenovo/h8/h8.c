@@ -53,7 +53,7 @@ enum battery {
 
 /* h8 charge priority. Defines if primary or secondary
  * battery is charged first.
- * Because NVRAM is complete the otherway around as this register,
+ * Because NVRAM is complete the other way around as this register,
  * it's inverted by if
  */
 static void h8_charge_priority(enum battery battery)
@@ -325,6 +325,6 @@ static void h8_enable(struct device *dev)
 }
 
 struct chip_operations ec_lenovo_h8_ops = {
-	CHIP_NAME("Lenovo H8 EC")
+	.name = "Lenovo H8 EC",
 	.enable_dev = h8_enable,
 };

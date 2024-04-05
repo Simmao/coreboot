@@ -11,6 +11,7 @@ chip northbridge/intel/sandybridge
 	register "gpu_panel_power_down_delay" = "500"		# 50ms
 	register "gpu_panel_power_up_delay" = "2000"		# 200ms
 
+	register "spd_addresses" = "{0x50, 0, 0, 0}"
 	device domain 0 on
 		subsystemid 0x17aa 0x2209 inherit
 		chip southbridge/intel/bd82x6x # Intel Series 7 Panther Point PCH
@@ -18,7 +19,7 @@ chip northbridge/intel/sandybridge
 			# Enable SATA ports 0 (HDD bay) & 1 (WWAN M.2 SATA)
 			register "sata_port_map" = "0x3"
 
-			device pci 1f.0 on # LPC bridge
+			device ref lpc on
 				chip ec/lenovo/h8
 					register "config1" = "0x05"
 					register "config3" = "0xc4"
@@ -28,7 +29,7 @@ chip northbridge/intel/sandybridge
 					register "has_bdc_detection" = "0"
 					device pnp ff.2 on end
 				end
-			end # LPC Controller
+			end
 		end
 	end
 end

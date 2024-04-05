@@ -89,8 +89,6 @@ static void merlin_init(struct device *dev)
 
 	ec_mirror_flag();
 
-	pc_keyboard_init(NO_AUX_DEVICE);
-
 	/*
 	 * Restore settings from CMOS into EC RAM:
 	 *
@@ -322,6 +320,6 @@ static void enable_dev(struct device *dev)
 }
 
 struct chip_operations ec_starlabs_merlin_ops = {
-	CHIP_NAME("ITE EC")
+	.name = "ITE EC",
 	.enable_dev = enable_dev
 };

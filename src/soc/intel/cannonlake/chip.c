@@ -80,11 +80,11 @@ const char *soc_acpi_name(const struct device *dev)
 	switch (dev->path.pci.devfn) {
 	case SA_DEVFN_ROOT:	return "MCHC";
 	case SA_DEVFN_IGD:	return "GFX0";
+	case SA_DEVFN_TS:	return "TCPU";
 	case PCH_DEVFN_ISH:	return "ISHB";
 	case SA_DEVFN_GNA:	return "GNA";
 	case PCH_DEVFN_XHCI:	return "XHCI";
 	case PCH_DEVFN_USBOTG:	return "XDCI";
-	case PCH_DEVFN_THERMAL:	return "THRM";
 	case PCH_DEVFN_I2C0:	return "I2C0";
 	case PCH_DEVFN_I2C1:	return "I2C1";
 	case PCH_DEVFN_I2C2:	return "I2C2";
@@ -206,7 +206,7 @@ static void soc_enable(struct device *dev)
 }
 
 struct chip_operations soc_intel_cannonlake_ops = {
-	CHIP_NAME("Intel Cannonlake")
+	.name = "Intel Cannonlake",
 	.enable_dev	= &soc_enable,
 	.init		= &soc_init_pre_device,
 };

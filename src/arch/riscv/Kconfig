@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 config ARCH_RISCV_RV64
 	bool
 	select ARCH_RISCV
@@ -65,6 +67,16 @@ config OPENSBI_TEXT_START
 	depends on RISCV_HAS_OPENSBI
 	help
 	  The linking address used to build opensbi.
+
+config OPENSBI_FW_DYNAMIC_BOOT_HART
+	int
+	default RISCV_WORKING_HARTID
+	help
+	  This specifies the hart that OpenSBI will use to boot the payload. If set to
+	  value -1, OpenSBI will use a 'lottery' scheme to figure it out itself.
+	  This hart must be able to execute in the Supervisor priviledged mode, since
+	  that is the mode usually used for the payload. If the hart does not support
+	  Supervisor mode OpenSBI will again look for a hart that does support it.
 
 config ARCH_RISCV_U
 	# U (user) mode is for programs.

@@ -108,7 +108,7 @@ static void mch_domain_set_resources(struct device *dev)
 	for (res = dev->resource_list; res; res = res->next)
 		report_resource_stored(dev, res, "");
 
-	assign_resources(dev->link_list);
+	assign_resources(dev->downstream);
 }
 
 static void mch_domain_init(struct device *dev)
@@ -159,6 +159,6 @@ static void enable_dev(struct device *dev)
 }
 
 struct chip_operations northbridge_intel_pineview_ops = {
-	CHIP_NAME("Intel Pineview Northbridge")
+	.name = "Intel Pineview Northbridge",
 	.enable_dev = enable_dev,
 };

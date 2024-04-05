@@ -478,7 +478,7 @@ static void parse_devicetree(FSP_S_CONFIG *silconfig)
 		return;
 	}
 	/* Only disable bus 0 devices. */
-	for (dev = dev->bus->children; dev; dev = dev->sibling) {
+	for (dev = dev->upstream->children; dev; dev = dev->sibling) {
 		if (!dev->enabled)
 			disable_dev(dev, silconfig);
 	}
@@ -759,7 +759,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 }
 
 struct chip_operations soc_intel_apollolake_ops = {
-	CHIP_NAME("Intel Apollolake SOC")
+	.name = "Intel Apollolake SOC",
 	.enable_dev = &enable_dev,
 	.init = &soc_init,
 	.final = &soc_final

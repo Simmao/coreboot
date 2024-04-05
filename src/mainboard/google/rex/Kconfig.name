@@ -1,28 +1,6 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 comment "Rex"
-
-config BOARD_GOOGLE_REX0
-	bool "-> Rex 0"
-
-config BOARD_GOOGLE_SCREEBO
-	bool "->  Screebo"
-
-config BOARD_GOOGLE_SCREEBO4ES
-	bool "->  Screebo4ES"
-
-config BOARD_GOOGLE_KARIS
-	bool "->  Karis"
-
-config BOARD_GOOGLE_KARIS4ES
-	bool "->  Karis4ES"
-
-config BOARD_GOOGLE_REX_EC_ISH
-	bool "-> Rex EC ISH"
-
-config BOARD_GOOGLE_OVIS
-	bool "-> Ovis"
-
-config BOARD_GOOGLE_OVIS4ES
-	bool "-> Ovis4ES"
 
 config BOARD_GOOGLE_DEKU
 	bool "-> Deku"
@@ -30,8 +8,32 @@ config BOARD_GOOGLE_DEKU
 config BOARD_GOOGLE_DEKU4ES
 	bool "-> Deku4ES"
 
+config BOARD_GOOGLE_KARIS
+	bool "->  Karis"
+
+config BOARD_GOOGLE_KARIS4ES
+	bool "->  Karis4ES"
+
+config BOARD_GOOGLE_OVIS
+	bool "-> Ovis"
+
+config BOARD_GOOGLE_OVIS4ES
+	bool "-> Ovis4ES"
+
+config BOARD_GOOGLE_REX0
+	bool "-> Rex 0"
+
+config BOARD_GOOGLE_REX_EC_ISH
+	bool "-> Rex EC ISH"
+
 config BOARD_GOOGLE_REX4ES
 	bool "-> Rex4ES"
 
 config BOARD_GOOGLE_REX4ES_EC_ISH
 	bool "-> Rex4ES EC ISH"
+
+config BOARD_GOOGLE_SCREEBO
+	bool "->  Screebo"
+
+config BOARD_GOOGLE_SCREEBO4ES
+	bool "->  Screebo4ES"

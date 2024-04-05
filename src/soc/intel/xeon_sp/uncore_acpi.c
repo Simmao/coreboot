@@ -10,7 +10,9 @@
 #include <device/mmio.h>
 #include <device/pci.h>
 #include <device/pciexp.h>
+#include <device/pci_ids.h>
 #include <soc/acpi.h>
+#include <soc/chip_common.h>
 #include <soc/hest.h>
 #include <soc/iomap.h>
 #include <soc/numa.h>
@@ -18,7 +20,6 @@
 #include <soc/soc_util.h>
 #include <soc/util.h>
 #include <intelblocks/p2sb.h>
-
 #include "chip.h"
 
 /* NUMA related ACPI table generation. SRAT, SLIT, etc */
@@ -98,19 +99,17 @@ static unsigned int get_srat_memory_entries(acpi_srat_mem_t *srat_mem)
 			"ElementSize: 0x%x, type: %d, reserved: %d\n",
 			e, addr, mem_element->BaseAddress, size,
 			mem_element->ElementSize, mem_element->Type,
-			(mem_element->Type & MEM_TYPE_RESERVED));
+			is_memtype_reserved(mem_element->Type));
 
 		assert(mmap_index < MAX_ACPI_MEMORY_AFFINITY_COUNT);
 
 		/* skip reserved memory region */
-		if (mem_element->Type & MEM_TYPE_RESERVED)
+		if (is_memtype_reserved(mem_element->Type))
 			continue;
-#if CONFIG(SOC_INTEL_SAPPHIRERAPIDS_SP)
-		/* Skip all non processor attached memory regions */
-		/* In other words, skip all the types >= MemTypeCxlAccVolatileMem */
-		if (mem_element->Type >= MemTypeCxlAccVolatileMem)
+		/* skip all non processor attached memory regions */
+		if (CONFIG(SOC_INTEL_HAS_CXL) &&
+			(!is_memtype_processor_attached(mem_element->Type)))
 			continue;
-#endif
 
 		/* skip if this address is already added */
 		bool skip = false;
@@ -132,9 +131,9 @@ static unsigned int get_srat_memory_entries(acpi_srat_mem_t *srat_mem)
 		srat_mem[mmap_index].length_low = (uint32_t)(size & 0xffffffff);
 		srat_mem[mmap_index].length_high = (uint32_t)(size >> 32);
 		srat_mem[mmap_index].proximity_domain = mem_element->SocketId;
-		srat_mem[mmap_index].flags = SRAT_ACPI_MEMORY_ENABLED;
-		if ((mem_element->Type & MEMTYPE_VOLATILE_MASK) == 0)
-			srat_mem[mmap_index].flags |= SRAT_ACPI_MEMORY_NONVOLATILE;
+		srat_mem[mmap_index].flags = ACPI_SRAT_MEMORY_ENABLED;
+		if (is_memtype_non_volatile(mem_element->Type))
+			srat_mem[mmap_index].flags |= ACPI_SRAT_MEMORY_NONVOLATILE;
 		++mmap_index;
 	}
 
@@ -225,7 +224,7 @@ static unsigned long acpi_create_dmar_ds_pci_br_for_port(unsigned long current,
 							 uint32_t pcie_seg,
 							 bool is_atsr, bool *first)
 {
-	const uint32_t bus = bridge_dev->bus->secondary;
+	const uint32_t bus = bridge_dev->upstream->secondary;
 	const uint32_t dev = PCI_SLOT(bridge_dev->path.pci.devfn);
 	const uint32_t func = PCI_FUNC(bridge_dev->path.pci.devfn);
 
@@ -282,7 +281,7 @@ static unsigned long acpi_create_drhd(unsigned long current, int socket,
 	if (socket == 0 && stack == IioStack0) {
 		union p2sb_bdf ioapic_bdf = p2sb_get_ioapic_bdf();
 		printk(BIOS_DEBUG, "    [IOAPIC Device] Enumeration ID: 0x%x, PCI Bus Number: 0x%x, "
-		       "PCI Path: 0x%x, 0x%x\n", get_ioapic_id(VIO_APIC_VADDR), ioapic_bdf.bus,
+		       "PCI Path: 0x%x, 0x%x\n", get_ioapic_id(IO_APIC_ADDR), ioapic_bdf.bus,
 		       ioapic_bdf.dev, ioapic_bdf.fn);
 		current += acpi_create_dmar_ds_ioapic_from_hw(current,
 				IO_APIC_ADDR, ioapic_bdf.bus, ioapic_bdf.dev, ioapic_bdf.fn);
@@ -335,9 +334,8 @@ static unsigned long acpi_create_drhd(unsigned long current, int socket,
 #endif
 	}
 
-#if CONFIG(SOC_INTEL_SAPPHIRERAPIDS_SP) || CONFIG(SOC_INTEL_COOPERLAKE_SP)
-	// Add DINO End Points (with memory resources. We don't report every End Point device.)
-	if (ri->Personality == TYPE_DINO) {
+	// Add IOAT End Points (with memory resources. We don't report every End Point device.)
+	if (CONFIG(HAVE_IOAT_DOMAINS) && is_ioat_iio_stack_res(ri)) {
 		for (int b = ri->BusBase; b <= ri->BusLimit; ++b) {
 			struct device *dev = pcidev_path_on_bus(b, PCI_DEVFN(0, 0));
 			while (dev) {
@@ -357,7 +355,6 @@ static unsigned long acpi_create_drhd(unsigned long current, int socket,
 			}
 		}
 	}
-#endif
 
 	// Add HPET
 	if (socket == 0 && stack == IioStack0) {
@@ -384,26 +381,39 @@ static unsigned long acpi_create_drhd(unsigned long current, int socket,
 
 static unsigned long acpi_create_atsr(unsigned long current, const IIO_UDS *hob)
 {
+	struct device *child, *dev;
+	struct resource *resource;
+
+	/*
+	 * The assumption made here is that the host bridges on a socket share the
+	 * PCI segment group and thus only one ATSR header needs to be emitted for
+	 * a single socket.
+	 * This is easier than to sort the host bridges by PCI segment group first
+	 * and then generate one ATSR header for every new segment.
+	 */
 	for (int socket = 0, iio = 0; iio < hob->PlatformData.numofIIO; ++socket) {
 		if (!soc_cpu_is_enabled(socket))
 			continue;
 		iio++;
-
-		uint32_t pcie_seg = hob->PlatformData.CpuQpiInfo[socket].PcieSegment;
 		unsigned long tmp = current;
 		bool first = true;
-		IIO_RESOURCE_INSTANCE iio_resource =
-			hob->PlatformData.IIO_resource[socket];
 
-		for (int stack = 0; stack < MAX_LOGIC_IIO_STACK; ++stack) {
-			uint32_t bus = iio_resource.StackRes[stack].BusBase;
-			uint32_t vtd_base = iio_resource.StackRes[stack].VtdBarAddress;
-			if (!vtd_base)
+		dev = NULL;
+		while ((dev = dev_find_device(PCI_VID_INTEL, MMAP_VTD_CFG_REG_DEVID, dev))) {
+			/* Only add devices for the current socket */
+			if (iio_pci_domain_socket_from_dev(dev) != socket)
 				continue;
-			uint64_t vtd_mmio_cap = read64p(vtd_base + VTD_EXT_CAP_LOW);
-			printk(BIOS_SPEW, "%s socket: %d, stack: %d, bus: 0x%x, vtd_base: 0x%x, "
+			/* See if there is a resource with the appropriate index. */
+			resource = probe_resource(dev, VTD_BAR_CSR);
+			if (!resource)
+				continue;
+			int stack = iio_pci_domain_stack_from_dev(dev);
+
+			uint64_t vtd_mmio_cap = read64(res2mmio(resource, VTD_EXT_CAP_LOW, 0));
+			printk(BIOS_SPEW, "%s socket: %d, stack: %d, bus: 0x%x, vtd_base: %p, "
 				"vtd_mmio_cap: 0x%llx\n",
-				__func__, socket, stack, bus, vtd_base, vtd_mmio_cap);
+				__func__, socket, stack, dev->upstream->secondary,
+				res2mmio(resource, 0, 0), vtd_mmio_cap);
 
 			// ATSR is applicable only for platform supporting device IOTLBs
 			// through the VT-d extended capability register
@@ -411,17 +421,15 @@ static unsigned long acpi_create_atsr(unsigned long current, const IIO_UDS *hob)
 			if ((vtd_mmio_cap & 0x4) == 0) // BIT 2
 				continue;
 
-			if (bus == 0)
+			if (dev->upstream->secondary == 0 && dev->upstream->segment_group == 0)
 				continue;
 
-			struct device *dev = pcidev_path_on_bus(bus, PCI_DEVFN(0, 0));
-			while (dev) {
-				if ((dev->hdr_type & 0x7f) == PCI_HEADER_TYPE_BRIDGE)
-					current +=
+			for (child = dev->upstream->children; child; child = child->sibling) {
+				if ((child->hdr_type & 0x7f) != PCI_HEADER_TYPE_BRIDGE)
+					continue;
+				current +=
 					acpi_create_dmar_ds_pci_br_for_port(
-					current, dev, pcie_seg, true, &first);
-
-				dev = dev->sibling;
+					current, child, child->upstream->segment_group, true, &first);
 			}
 		}
 		if (tmp != current)
@@ -465,32 +473,27 @@ static unsigned long acpi_create_rmrr(unsigned long current)
 
 static unsigned long acpi_create_rhsa(unsigned long current)
 {
-	const IIO_UDS *hob = get_iio_uds();
+	struct device *dev = NULL;
+	struct resource *resource;
+	int socket;
 
-	for (int socket = 0, iio = 0; iio < hob->PlatformData.numofIIO; ++socket) {
-		if (!soc_cpu_is_enabled(socket))
+	while ((dev = dev_find_device(PCI_VID_INTEL, MMAP_VTD_CFG_REG_DEVID, dev))) {
+		/* See if there is a resource with the appropriate index. */
+		resource = probe_resource(dev, VTD_BAR_CSR);
+		if (!resource)
 			continue;
-		iio++;
 
-		IIO_RESOURCE_INSTANCE iio_resource =
-			hob->PlatformData.IIO_resource[socket];
-		for (int stack = 0; stack < MAX_LOGIC_IIO_STACK; ++stack) {
-			uint32_t vtd_base = iio_resource.StackRes[stack].VtdBarAddress;
-			if (!vtd_base)
-				continue;
+		socket = iio_pci_domain_socket_from_dev(dev);
 
-			printk(BIOS_DEBUG, "[Remapping Hardware Static Affinity] Base Address: 0x%x, "
-				"Proximity Domain: 0x%x\n", vtd_base, socket);
-			current += acpi_create_dmar_rhsa(current, vtd_base, socket);
-		}
+		printk(BIOS_DEBUG, "[Remapping Hardware Static Affinity] Base Address: %p, "
+			"Proximity Domain: 0x%x\n", res2mmio(resource, 0, 0), socket);
+		current += acpi_create_dmar_rhsa(current, (uintptr_t)res2mmio(resource, 0, 0), socket);
 	}
 
 	return current;
 }
 
-/* Skylake-SP doesn't have DINO but not sure how to verify this on CPX */
-#if CONFIG(SOC_INTEL_SAPPHIRERAPIDS_SP) || CONFIG(SOC_INTEL_COOPERLAKE_SP)
-static unsigned long xeonsp_create_satc_dino(unsigned long current, const STACK_RES *ri)
+static unsigned long xeonsp_create_satc_ioat(unsigned long current, const STACK_RES *ri)
 {
 	for (int b = ri->BusBase; b <= ri->BusLimit; ++b) {
 		struct device *dev = pcidev_path_on_bus(b, PCI_DEVFN(0, 0));
@@ -517,22 +520,21 @@ static unsigned long acpi_create_satc(unsigned long current, const IIO_UDS *hob)
 	// Add the SATC header
 	current += acpi_create_dmar_satc(current, 0, 0);
 
-	// Find the DINO devices on each socket
+	// Find the IOAT devices on each socket
 	for (int socket = CONFIG_MAX_SOCKET - 1; socket >= 0; --socket) {
 		if (!soc_cpu_is_enabled(socket))
 			continue;
 		for (int stack = (MAX_LOGIC_IIO_STACK - 1); stack >= 0; --stack) {
 			const STACK_RES *ri = &hob->PlatformData.IIO_resource[socket].StackRes[stack];
-			// Add the DINO ATS devices to the SATC
-			if (ri->Personality == TYPE_DINO)
-				current = xeonsp_create_satc_dino(current, ri);
+			// Add the IOAT ATS devices to the SATC
+			if (CONFIG(HAVE_IOAT_DOMAINS) && is_ioat_iio_stack_res(ri))
+				current = xeonsp_create_satc_ioat(current, ri);
 		}
 	}
 
 	acpi_dmar_satc_fixup(tmp, current);
 	return current;
 }
-#endif
 
 static unsigned long acpi_fill_dmar(unsigned long current)
 {
@@ -555,10 +557,9 @@ static unsigned long acpi_fill_dmar(unsigned long current)
 	// RHSA
 	current = acpi_create_rhsa(current);
 
-#if CONFIG(SOC_INTEL_SAPPHIRERAPIDS_SP) || CONFIG(SOC_INTEL_COOPERLAKE_SP)
 	// SATC
-	current = acpi_create_satc(current, hob);
-#endif
+	if (CONFIG(HAVE_IOAT_DOMAINS))
+		current = acpi_create_satc(current, hob);
 
 	return current;
 }

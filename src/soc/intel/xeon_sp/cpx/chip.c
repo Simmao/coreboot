@@ -6,6 +6,7 @@
 #include <cpu/x86/mp.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
+#include <device/pci_def.h>
 #include <gpio.h>
 #include <intelblocks/acpi.h>
 #include <intelblocks/lpc_lib.h>
@@ -26,22 +27,13 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 	mainboard_silicon_init_params(silupd);
 }
 
-#if CONFIG(HAVE_ACPI_TABLES)
-const char *soc_acpi_name(const struct device *dev)
-{
-	if (dev->path.type == DEVICE_PATH_DOMAIN)
-		return "PC00";
-	return NULL;
-}
-#endif
-
 static struct device_operations pci_domain_ops = {
-	.read_resources = &pci_domain_read_resources,
-	.set_resources = &xeonsp_pci_domain_set_resources,
-	.scan_bus = &xeonsp_pci_domain_scan_bus,
+	.read_resources = iio_pci_domain_read_resources,
+	.set_resources = pci_domain_set_resources,
+	.scan_bus = iio_pci_domain_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.write_acpi_tables  = &northbridge_write_acpi_tables,
-	.acpi_name        = soc_acpi_name
+	.acpi_name          = soc_acpi_name,
 #endif
 };
 
@@ -115,33 +107,38 @@ static void iio_enable_masks(void)
 
 static void set_pcu_locks(void)
 {
-	for (uint32_t socket = 0; socket < CONFIG_MAX_SOCKET; ++socket) {
-		if (!soc_cpu_is_enabled(socket))
-			continue;
-		uint32_t bus = get_socket_stack_busno(socket, PCU_IIO_STACK);
+	struct device *dev = NULL;
 
-		/* configure PCU_CR0_FUN csrs */
-		const struct device *cr0_dev = PCU_DEV_CR0(bus);
-		pci_or_config32(cr0_dev, PCU_CR0_P_STATE_LIMITS, P_STATE_LIMITS_LOCK);
-		pci_or_config32(cr0_dev, PCU_CR0_PACKAGE_RAPL_LIMIT_UPR, PKG_PWR_LIM_LOCK_UPR);
-		pci_or_config32(cr0_dev, PCU_CR0_TURBO_ACTIVATION_RATIO, TURBO_ACTIVATION_RATIO_LOCK);
-
-
-		/* configure PCU_CR1_FUN csrs */
-		const struct device *cr1_dev = PCU_DEV_CR1(bus);
-		pci_or_config32(cr1_dev, PCU_CR1_SAPMCTL, SAPMCTL_LOCK_MASK);
-
-		/* configure PCU_CR2_FUN csrs */
-		const struct device *cr2_dev = PCU_DEV_CR2(bus);
-		pci_or_config32(cr2_dev, PCU_CR2_DRAM_PLANE_POWER_LIMIT, PP_PWR_LIM_LOCK);
-		pci_or_config32(cr2_dev, PCU_CR2_DRAM_POWER_INFO_UPR, DRAM_POWER_INFO_LOCK_UPR);
-
-		/* configure PCU_CR3_FUN csrs */
-		const struct device *cr3_dev = PCU_DEV_CR3(bus);
-		pci_or_config32(cr3_dev, PCU_CR3_CONFIG_TDP_CONTROL, TDP_LOCK);
-		pci_or_config32(cr3_dev, PCU_CR3_FLEX_RATIO, OC_LOCK);
+	while ((dev = dev_find_device(PCI_VID_INTEL, PCU_CR0_DEVID, dev))) {
+		printk(BIOS_SPEW, "%s: locking registers\n", dev_path(dev));
+		pci_or_config32(dev, PCU_CR0_P_STATE_LIMITS, P_STATE_LIMITS_LOCK);
+		pci_or_config32(dev, PCU_CR0_PACKAGE_RAPL_LIMIT_UPR,
+				PKG_PWR_LIM_LOCK_UPR);
+		pci_or_config32(dev, PCU_CR0_TURBO_ACTIVATION_RATIO,
+				TURBO_ACTIVATION_RATIO_LOCK);
 	}
 
+	dev = NULL;
+	while ((dev = dev_find_device(PCI_VID_INTEL, PCU_CR1_DEVID, dev))) {
+		printk(BIOS_SPEW, "%s: locking registers\n", dev_path(dev));
+		pci_or_config32(dev, PCU_CR1_SAPMCTL, SAPMCTL_LOCK_MASK);
+	}
+
+	dev = NULL;
+	while ((dev = dev_find_device(PCI_VID_INTEL, PCU_CR2_DEVID, dev))) {
+		printk(BIOS_SPEW, "%s: locking registers\n", dev_path(dev));
+		pci_or_config32(dev, PCU_CR2_DRAM_PLANE_POWER_LIMIT,
+				PP_PWR_LIM_LOCK);
+		pci_or_config32(dev, PCU_CR2_DRAM_POWER_INFO_UPR,
+				DRAM_POWER_INFO_LOCK_UPR);
+	}
+
+	dev = NULL;
+	while ((dev = dev_find_device(PCI_VID_INTEL, PCU_CR3_DEVID, dev))) {
+		printk(BIOS_SPEW, "%s: locking registers\n", dev_path(dev));
+		pci_or_config32(dev, PCU_CR3_CONFIG_TDP_CONTROL, TDP_LOCK);
+		pci_or_config32(dev, PCU_CR3_FLEX_RATIO, OC_LOCK);
+	}
 }
 
 static void set_imc_locks(void)
@@ -186,7 +183,7 @@ static void chip_init(void *data)
 }
 
 struct chip_operations soc_intel_xeon_sp_cpx_ops = {
-	CHIP_NAME("Intel Cooper Lake-SP")
+	.name = "Intel Cooper Lake-SP",
 	.enable_dev = chip_enable_dev,
 	.init = chip_init,
 	.final = chip_final,

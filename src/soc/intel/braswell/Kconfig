@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 config SOC_INTEL_BRASWELL
 	bool
 	select ACPI_COMMON_MADT_IOAPIC
@@ -114,6 +116,9 @@ config DISABLE_HPET
 	help
 	 Enable this to disable the HPET support
 	 Solves the Linux MP-BIOS bug timer not connected.
+
+config HPET_MIN_TICKS
+	default 0x80
 
 config USE_GOOGLE_FSP
 	bool

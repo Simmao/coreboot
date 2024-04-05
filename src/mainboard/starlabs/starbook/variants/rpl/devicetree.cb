@@ -5,6 +5,7 @@ chip soc/intel/alderlake
 
 	# FSP Silicon
 	register "eist_enable"			= "1"
+	register "enable_c1e"			= "1"
 
 	register "cnvi_bt_core"			= "1"
 	register "cnvi_bt_audio_offload"	= "1"
@@ -166,6 +167,17 @@ chip soc/intel/alderlake
 				device pnp 4e.17 off end			# Power Management Channel 3
 				device pnp 4e.18 off end			# Power Management Channel 4
 				device pnp 4e.19 off end			# Power Management Channel 5
+			end
+		end
+		device ref pmc		hidden
+			chip drivers/intel/pmc_mux
+				device generic 0 on
+					chip drivers/intel/pmc_mux/conn
+						use usb2_port1 as usb2_port
+						use tcss_usb3_port1 as usb3_port
+						device generic 0 alias conn0 on end
+					end
+				end
 			end
 		end
 		device ref hda		on

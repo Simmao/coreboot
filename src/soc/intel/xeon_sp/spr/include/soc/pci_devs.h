@@ -20,12 +20,11 @@
 #define UNCORE_BUS_0 0
 #define UNCORE_BUS_1 1
 
-/* UBOX Registers [B:30, D:0, F:1] */
-#define UBOX_DECS_DEV 0
-#define UBOX_URACU_FUNC 1
+/* UBOX Registers [U(1), D:0, F:1] */
 #define SMM_FEATURE_CONTROL 0x8c
 #define SMM_CODE_CHK_EN BIT(2)
 #define SMM_FEATURE_CONTROL_LOCK BIT(0)
+#define UBOX_DFX_DEVID 0x3251
 
 /* CHA registers [B:31, D:29, F:0/F:1]
  * SAD is the previous xeon_sp register name. Keep defines for shared code.
@@ -36,6 +35,7 @@
 #define SAD_ALL_FUNC 0
 #define SAD_ALL_PAM0123_CSR 0x80
 #define SAD_ALL_PAM456_CSR 0x84
+#define SAD_ALL_DEVID 0x344f
 
 #if !defined(__SIMPLE_DEVICE__)
 #define _PCU_DEV(bus, func) pcidev_path_on_bus(bus, PCI_DEVFN(PCU_DEV, func))
@@ -48,6 +48,7 @@
 #define PCU_DEV 30
 
 #define PCU_CR0_FUN 0
+#define PCU_CR0_DEVID 0x3258
 #define PCU_DEV_CR0(bus) _PCU_DEV(bus, PCU_CR0_FUN)
 #define PCU_CR0_PLATFORM_INFO 0xa8
 #define PCU_CR0_TURBO_ACTIVATION_RATIO 0xb0
@@ -63,6 +64,7 @@
 #define VR_CURRENT_CONFIG_LOCK BIT(31)
 
 #define PCU_CR1_FUN 1
+#define PCU_CR1_DEVID 0x3259
 #define PCU_DEV_CR1(bus) _PCU_DEV(bus, PCU_CR1_FUN)
 #define PCU_CR1_BIOS_MB_DATA_REG 0x8c
 
@@ -87,6 +89,7 @@
 #define PCU_CR1_DESIRED_CORES_CFG2_REG_LOCK_MASK BIT(31)
 
 #define PCU_CR2_FUN 2
+#define PCU_CR2_DEVID 0x325a
 #define PCU_DEV_CR2(bus) _PCU_DEV(bus, PCU_CR2_FUN)
 #define PCU_CR2_DRAM_POWER_INFO_LWR 0xa8
 #define PCU_CR2_DRAM_POWER_INFO_UPR (PCU_CR2_DRAM_POWER_INFO_LWR + 4)
@@ -97,6 +100,7 @@
 #define PP_PWR_LIM_LOCK_UPR BIT(31)
 
 #define PCU_CR3_FUN 3
+#define PCU_CR3_DEVID 0x325b
 #define PCU_CR3_CAPID4 0x94
 #define ERR_SPOOFING_DIS 1
 #define PCU_DEV_CR3(bus) _PCU_DEV(bus, PCU_CR3_FUN)
@@ -106,6 +110,7 @@
 #define OC_LOCK BIT(20)
 
 #define PCU_CR4_FUN 4
+#define PCU_CR4_DEVID 0x325c
 #define PCU_VIRAL_CONTROL 0x84
 #define PCU_FW_ERR_EN (1 << 10)
 #define PCU_UC_ERR_EN (1 << 9)
@@ -113,6 +118,7 @@
 #define PCU_EMCA_MODE (1 << 2)
 
 #define PCU_CR6_FUN 6
+#define PCU_CR6_DEVID 0x325e
 #define PCU_DEV_CR6(bus) _PCU_DEV(bus, PCU_CR6_FUN)
 #define PCU_CR6_PLATFORM_RAPL_LIMIT_CFG_LWR 0xa8
 #define PCU_CR6_PLATFORM_RAPL_LIMIT_CFG_UPR (PCU_CR6_PLATFORM_RAPL_LIMIT_CFG_LWR + 4)
@@ -137,6 +143,7 @@
 #define VTD_MMIOL_CSR 0xd8
 #define VTD_NCMEM_BASE_CSR 0xe0
 #define VTD_NCMEM_LIMIT_CSR 0xe8
+#define VTD_BAR_CSR 0x180
 #define VTD_LTDPR 0x290
 
 #define VMD_DEV_NUM 0x00
@@ -187,7 +194,5 @@
 #define CRASHLOG_CTL 0x1B8
 #define BIOS_CRASHLOG_CTL 0x158
 #define CRASHLOG_CTL_DIS BIT(2)
-
-pci_devfn_t soc_get_ubox_pmon_dev(void);
 
 #endif /* _SOC_PCI_DEVS_H_ */

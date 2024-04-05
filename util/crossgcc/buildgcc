@@ -38,12 +38,12 @@ COREBOOT_MIRROR_URL="https://www.coreboot.org/releases/crossgcc-sources"
 GMP_VERSION=6.3.0
 MPFR_VERSION=4.2.1
 MPC_VERSION=1.3.1
-GCC_VERSION=11.4.0
-BINUTILS_VERSION=2.41
+GCC_VERSION=13.2.0
+BINUTILS_VERSION=2.42
 IASL_VERSION="R06_28_23"
 # CLANG version number
-CLANG_VERSION=16.0.6
-CMAKE_VERSION=3.26.4
+CLANG_VERSION=17.0.6
+CMAKE_VERSION=3.28.3
 NASM_VERSION=2.16.01
 
 # Filename for each package
@@ -722,7 +722,7 @@ build_BINUTILS() {
 		--enable-multilib \
 		--disable-docs \
 		--disable-texinfo \
-		${BINUTILS_OPTIONS} \
+		${TARGET_BINUTILS_OPTIONS} \
 		CFLAGS="$HOSTCFLAGS" \
 		CXXFLAGS="$HOSTCFLAGS" || touch .failed
 	# shellcheck disable=SC2086
@@ -774,6 +774,11 @@ build_cross_GCC() {
 	[ -n "$CXX" ] && $CXX --version | grep clang >/dev/null 2>&1 && \
 		CLANGCXXFLAGS="-fbracket-depth=1024"
 
+	# standard code model is medlow but all mainboards are compiled with medany code model
+	if [ "${TARGETARCH}" = "riscv64-elf" ]; then
+		CFLAGS_FOR_TARGET_EXTRA="-mcmodel=medany"
+	fi
+
 	# GCC does not honor HOSTCFLAGS at all. CFLAGS are used for
 	# both target and host object files.
 	# There's a work-around called CFLAGS_FOR_BUILD and CFLAGS_FOR_TARGET
@@ -783,7 +788,7 @@ build_cross_GCC() {
 	# using C++.
 	# shellcheck disable=SC2086
 	CC="$(hostcc target)" CXX="$(hostcxx target)" \
-		CFLAGS_FOR_TARGET="-O2 -Dinhibit_libc" \
+		CFLAGS_FOR_TARGET="${CFLAGS_FOR_TARGET_EXTRA} -O2 -Dinhibit_libc" \
 		CFLAGS="$HOSTCFLAGS $CLANGFLAGS" \
 		CFLAGS_FOR_BUILD="$HOSTCFLAGS $CLANGFLAGS" \
 		CXXFLAGS="$HOSTCFLAGS $CLANGCXXFLAGS" \
@@ -811,6 +816,7 @@ build_cross_GCC() {
 		--disable-libcc1 \
 		--disable-decimal-float \
 		${GCC_OPTIONS} \
+		${TARGET_GCC_OPTIONS} \
 		--enable-languages="${LANGUAGES}" \
 		--with-system-zlib \
 		--with-gmp="$DESTDIR$TARGETDIR" \
@@ -846,10 +852,11 @@ build_IASL() {
 	cd ../$IASL_DIR/generate/unix || exit 1
 	CFLAGS="$HOSTCFLAGS"
 	HOST="_LINUX"
-	test "$UNAME" = "Darwin" && HOST="_APPLE"
+	test "$UNAME" = "Darwin" && HOST="_APPLE" && OPT_LDFLAGS="-Wl,-no_fixup_chains"
 	test "$UNAME" = "FreeBSD" && HOST="_FreeBSD"
 	test "$UNAME" = "Cygwin" && HOST="_CYGWIN"
 	HOST="$HOST" CFLAGS="$CFLAGS" \
+	OPT_LDFLAGS="$OPT_LDFLAGS" \
 	OPT_CFLAGS="-O -D_FORTIFY_SOURCE=2 -D COREBOOT_TOOLCHAIN_VERSION='\"coreboot toolchain v$CROSSGCC_VERSION\"' " \
 	$MAKE $JOBS CC="$(hostcc host)" iasl acpibin acpidump acpiexec acpihelp acpisrc acpixtract
 	mkdir -p "$DESTDIR$TARGETDIR/bin/"
@@ -995,8 +1002,8 @@ case "$TARGETARCH" in
 	i386-elf)		;;
 	i386-mingw32)		;;
 	riscv-elf)		TARGETARCH=riscv64-elf
-				GCC_OPTIONS="$GCC_OPTIONS --with-isa-spec=20191213"
-				BINUTILS_OPTIONS="$BINUTILS_OPTIONS --with-isa-spec=20191213";;
+				TARGET_GCC_OPTIONS="$TARGET_GCC_OPTIONS --with-isa-spec=20191213"
+				TARGET_BINUTILS_OPTIONS="$TARGET_BINUTILS_OPTIONS --with-isa-spec=20191213";;
 	powerpc64*-linux*)	;;
 	i386*)			TARGETARCH=i386-elf;;
 	arm*)			TARGETARCH=arm-eabi;;
@@ -1080,7 +1087,17 @@ if [ -n "$CC" ]; then
 	fi
 else
 	if searchtool gnatgcc "Free Software Foundation" nofail > /dev/null; then
+		# gnatgcc is deprecated and in recent GCC releases its purpose is
+		# fulfilled by the gcc binary. In case of a deprecated gnatgcc
+		# version is installed, it doesn't provide the expected output and
+		# hostcc_has_gnat1() fails. In this case, just set the value of CC
+		# to gcc.
+		# TODO: Remove this whole branch when time is appropriate as the
+		#       second branch fulfills our needs.
 		CC=gnatgcc
+		if ! hostcc_has_gnat1; then
+			CC=gcc
+		fi
 	elif searchtool gcc "Free Software Foundation" nofail > /dev/null; then
 		CC=gcc
 	else
@@ -1131,6 +1148,8 @@ if [ "$UNAME" = "Darwin" ]; then
 	# For some weird reason, 10.5 autodetects an ABI=64 though
 	# so we're setting the ABI explicitly here.
 	if [ "$(sysctl -n hw.optional.x86_64 2>/dev/null)" -eq 1 ] 2>/dev/null; then
+		OPTIONS="ABI=64"
+	elif [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" -eq 1 ] 2>/dev/null; then
 		OPTIONS="ABI=64"
 	else
 		OPTIONS="ABI=32"

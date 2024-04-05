@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 config BOARD_GOOGLE_BROX_COMMON
 	def_bool n
 	select DRIVERS_GENERIC_GPIO_KEYS
@@ -47,11 +49,14 @@ config BOARD_GOOGLE_BASEBOARD_BROX
 	select SOC_INTEL_CRASHLOG
 	select SOC_INTEL_RAPTORLAKE
 	select SOC_INTEL_ALDERLAKE_PCH_P
+	select SOC_INTEL_COMMON_BLOCK_HDA_VERB
+	select DRIVERS_INTEL_ISH
 	select SYSTEM_TYPE_LAPTOP
-	select TPM_GOOGLE_CR50
+	select TPM_GOOGLE_TI50
 
 config BOARD_GOOGLE_BROX
 	select BOARD_GOOGLE_BASEBOARD_BROX
+	select CHROMEOS_WIFI_SAR if CHROMEOS
 
 if BOARD_GOOGLE_BROX_COMMON
 
@@ -61,6 +66,8 @@ config BASEBOARD_DIR
 
 config CHROMEOS
 	select EC_GOOGLE_CHROMEEC_SWITCHES
+	select GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC
+	select GBB_FLAG_DISABLE_PD_SOFTWARE_SYNC
 	select HAS_RECOVERY_MRC_CACHE
 
 config CHROMEOS_WIFI_SAR
@@ -76,7 +83,7 @@ config DEVICETREE
 
 config DRIVER_TPM_I2C_BUS
 	hex
-	default 0x1 if BOARD_GOOGLE_BROX
+	default 0x4 if BOARD_GOOGLE_BROX
 
 config DRIVER_TPM_I2C_ADDR
 	hex
@@ -87,7 +94,7 @@ config FMDFILE
 
 config TPM_TIS_ACPI_INTERRUPT
 	int
-	default 13
+	default 66 # GPE0_DW2_02 (GPP_E2)
 
 config OVERRIDE_DEVICETREE
 	default "variants/\$(CONFIG_VARIANT_DIR)/overridetree.cb"
@@ -106,7 +113,6 @@ config VARIANT_DIR
 	default "brox" if BOARD_GOOGLE_BROX
 
 config VBOOT
-	select VBOOT_EARLY_EC_SYNC
 	select VBOOT_LID_SWITCH
 
 config DIMM_SPD_SIZE
@@ -129,7 +135,6 @@ config HAVE_PCIE_WWAN
 	def_bool n
 
 config USE_PM_ACPI_TIMER
-	default y if BOARD_GOOGLE_PRIMUS4ES
 	default n
 
 config MEMORY_SODIMM
@@ -148,9 +153,5 @@ config HAVE_SLP_S0_GATE
 config PCIEXP_DEFAULT_MAX_RESIZABLE_BAR_BITS
 	int
 	default 33
-
-config VBT_DATA_SIZE_KB
-	int
-	default 10
 
 endif # BOARD_GOOGLE_BROX_COMMON

@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 menu "Payload"
 
 config PAYLOAD_NONE
@@ -80,13 +82,14 @@ config COMPRESSED_PAYLOAD_LZ4
 endchoice
 
 config PAYLOAD_OPTIONS
-	string
+	string "Additional cbfstool options"
 	default ""
 	help
 	  Additional cbfstool options for the payload
 
 config PAYLOAD_IS_FLAT_BINARY
-	def_bool n
+	bool "Payload is a flat binary"
+	default n
 	help
 	  Add the payload to cbfs as a flat binary type instead of as an
 	  elf payload

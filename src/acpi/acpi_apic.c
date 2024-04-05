@@ -5,6 +5,7 @@
 #include <arch/smp/mpspec.h>
 #include <commonlib/sort.h>
 #include <cpu/cpu.h>
+#include <device/device.h>
 
 static int acpi_create_madt_lapic(acpi_madt_lapic_t *lapic, u8 cpu, u8 apic)
 {
@@ -99,8 +100,8 @@ int acpi_create_madt_ioapic_from_hw(acpi_madt_ioapic_t *ioapic, u32 addr)
 {
 	static u32 gsi_base;
 	u32 my_base;
-	u8 id = get_ioapic_id((void *)(uintptr_t)addr);
-	u8 count = ioapic_get_max_vectors((void *)(uintptr_t)addr);
+	u8 id = get_ioapic_id((uintptr_t)addr);
+	u8 count = ioapic_get_max_vectors((uintptr_t)addr);
 
 	my_base = gsi_base;
 	gsi_base += count;

@@ -62,11 +62,11 @@ static void create_dsdt_iou_pci_resource(uint8_t socket, uint8_t stack, const ST
 	   Stacks 1 .. 5 (TYPE_UBOX_IIO)
 		Scope: PC<socket><stack>, ResourceTemplate: RBRS
 	*/
-
-	/* Write ResourceTemplate resource name */
+	/* write _CRS scope */
 	char tres[16];
-	snprintf(tres, sizeof(tres), "PT%d%X", socket, stack);
-	acpigen_write_name(tres);
+	snprintf(tres, sizeof(tres), "\\_SB.PC%d%X", socket, stack);
+	acpigen_write_scope(tres);
+	acpigen_write_name("_CRS");
 
 	printk(BIOS_DEBUG, "\tCreating ResourceTemplate %s for socket: %d, stack: %d\n", tres,
 	       socket, stack);
@@ -133,6 +133,7 @@ static void create_dsdt_iou_pci_resource(uint8_t socket, uint8_t stack, const ST
 	}
 
 	acpigen_write_resourcetemplate_footer();
+	acpigen_pop_len();
 }
 
 static void create_dsdt_iou_cxl_resource(uint8_t socket, uint8_t stack, const STACK_RES *ri, bool stack_enabled)
@@ -141,10 +142,11 @@ static void create_dsdt_iou_cxl_resource(uint8_t socket, uint8_t stack, const ST
 	   Stacks 1 .. 5 (TYPE_UBOX_IIO)
 		Scope: CX<socket><stack>, ResourceTemplate: RBRS
 	*/
-	/* write ResourceTemplate resource name */
+	/* write _CRS scope */
 	char tres[16];
-	snprintf(tres, sizeof(tres), "CT%d%X", socket, stack);
-	acpigen_write_name(tres);
+	snprintf(tres, sizeof(tres), "\\_SB.CX%d%X", socket, stack);
+	acpigen_write_scope(tres);
+	acpigen_write_name("_CRS");
 
 	printk(BIOS_DEBUG, "\tCreating ResourceTemplate %s for socket: %d, stack: %d\n", tres,
 	       socket, stack);
@@ -184,10 +186,14 @@ static void create_dsdt_iou_cxl_resource(uint8_t socket, uint8_t stack, const ST
 	}
 
 	acpigen_write_resourcetemplate_footer();
+	acpigen_pop_len();
 }
 
-static void create_dsdt_dino_resource(uint8_t socket, uint8_t stack, const STACK_RES *ri, bool stack_enabled)
+static void create_dsdt_ioat_resource(uint8_t socket, uint8_t stack, const STACK_RES *ri, bool stack_enabled)
 {
+	if (!stack_enabled)
+		return;
+
 	/*
 	   Stacks 8 .. B (TYPE_DINO)
 		Scope: DI<socket><stack> for DINO, ResourceTemplate: DT
@@ -219,68 +225,64 @@ static void create_dsdt_dino_resource(uint8_t socket, uint8_t stack, const STACK
 			mem64_base = ri->PciResourceMem64Base + CPM_MMIO_SIZE + HQM_MMIO_SIZE
 				     + CPM_MMIO_SIZE + HQM_MMIO_SIZE;
 			mem64_limit = ri->PciResourceMem64Limit;
-			snprintf(tres, sizeof(tres), "DT%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.DI%d%X", socket, stack);
 		} else if (rlist[i] == DSDT_CPM) {
 			bus_base = ri->BusBase + CPM_BUS_OFFSET;
 			bus_limit = bus_base + CPM_RESERVED_BUS;
 			mem64_base = ri->PciResourceMem64Base;
 			mem64_limit = mem64_base + CPM_MMIO_SIZE - 1;
-			snprintf(tres, sizeof(tres), "MT%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.PM%d%X", socket, stack);
 		} else if (rlist[i] == DSDT_HQM) {
 			bus_base = ri->BusBase + HQM_BUS_OFFSET;
 			bus_limit = bus_base + HQM_RESERVED_BUS;
 			mem64_base = ri->PciResourceMem64Base + CPM_MMIO_SIZE;
 			mem64_limit = mem64_base + HQM_MMIO_SIZE - 1;
-			snprintf(tres, sizeof(tres), "HT%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.HQ%d%X", socket, stack);
 		} else if (rlist[i] == DSDT_CPM1) {
 			bus_base = ri->BusBase + CPM1_BUS_OFFSET;
 			bus_limit = bus_base + CPM_RESERVED_BUS;
 			mem64_base = ri->PciResourceMem64Base + CPM_MMIO_SIZE + HQM_MMIO_SIZE;
 			mem64_limit = mem64_base + CPM_MMIO_SIZE - 1;
-			snprintf(tres, sizeof(tres), "MU%d%X", socket, stack);
-		} else { // DSDT_HQM1
+			snprintf(tres, sizeof(tres), "\\_SB.PN%d%X", socket, stack);
+		} else {
 			bus_base = ri->BusBase + HQM1_BUS_OFFSET;
 			bus_limit = bus_base + HQM_RESERVED_BUS;
 			mem64_base = ri->PciResourceMem64Base + CPM_MMIO_SIZE + HQM_MMIO_SIZE
 				     + CPM_MMIO_SIZE;
 			mem64_limit = mem64_base + HQM_MMIO_SIZE - 1;
-			snprintf(tres, sizeof(tres), "HU%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.HR%d%X", socket, stack);
 		}
+
+		/* Note, some SKU doesn't provide CPM1 and HQM1 and owns smaller bus ranges
+		 accordingly*/
+		if (bus_limit > ri->BusLimit)
+			continue;
 
 		printk(BIOS_DEBUG,
 		       "\tCreating Dino ResourceTemplate %s for socket: %d, "
 		       "stack: %d\n bus_base:0x%x, bus_limit:0x%x\n",
 		       tres, socket, stack, bus_base, bus_limit);
 
-		acpigen_write_name(tres);
+		acpigen_write_scope(tres);
+		acpigen_write_name("_CRS");
 		acpigen_write_resourcetemplate_header();
 
-		if (stack_enabled) {
-			acpigen_resource_word(2, 0xc, 0, 0, bus_base, bus_limit, 0x0,
-					      (bus_limit - bus_base + 1));
+		acpigen_resource_word(2, 0xc, 0, 0, bus_base, bus_limit, 0x0,
+			(bus_limit - bus_base + 1));
 
-			/* Mem32 resource */
-			if (rlist[i] == DSDT_DINO)
-				acpigen_resource_dword(0, 0xc, 1, 0, ri->PciResourceMem32Base,
-						       ri->PciResourceMem32Limit, 0x0,
-						       (ri->PciResourceMem32Limit
-							- ri->PciResourceMem32Base + 1));
+		/* Mem32 resource */
+		if (rlist[i] == DSDT_DINO)
+			acpigen_resource_dword(0, 0xc, 1, 0, ri->PciResourceMem32Base,
+				ri->PciResourceMem32Limit, 0x0,
+				(ri->PciResourceMem32Limit
+				- ri->PciResourceMem32Base + 1));
 
-			/* Mem64 resource */
-			acpigen_resource_qword(0, 0xc, 1, 0, mem64_base, mem64_limit, 0,
-					       (mem64_limit - mem64_base + 1));
-		} else {
-			acpigen_resource_word(2, 0, 0, 0, 0, 0, 0, 0);
-
-			/* Mem32 resource */
-			if (rlist[i] == DSDT_DINO)
-				acpigen_resource_dword(0, 0, 1, 0, 0, 0, 0, 0);
-
-			/* Mem64 resource */
-			acpigen_resource_qword(0, 0, 1, 0, 0, 0, 0, 0);
-		}
+		/* Mem64 resource */
+		acpigen_resource_qword(0, 0xc, 1, 0, mem64_base, mem64_limit, 0,
+			(mem64_limit - mem64_base + 1));
 
 		acpigen_write_resourcetemplate_footer();
+		acpigen_pop_len();
 	}
 }
 
@@ -290,19 +292,19 @@ static void create_dsdt_ubox_resource(uint8_t socket, uint8_t stack, const STACK
 	   Stacks D .. E (TYPE_UBOX)
 		Scope: UC/UD<socket><0..1> for UBOX[1-2], ResourceTemplate: UT/UU
 	*/
-
 	for (int i = 0; i < 2; ++i) {
 		char tres[16];
-		/* write ResourceTemplate resource name */
+		/* write _CRS scope */
 		if (i == 0)
-			snprintf(tres, sizeof(tres), "UT%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.UC%d%X", socket, stack);
 		else
-			snprintf(tres, sizeof(tres), "UU%d%X", socket, stack);
+			snprintf(tres, sizeof(tres), "\\_SB.UD%d%X", socket, stack);
 
 		printk(BIOS_DEBUG, "\tCreating ResourceTemplate %s for socket: %d, stack: %d\n",
 		       tres, socket, stack);
 
-		acpigen_write_name(tres);
+		acpigen_write_scope(tres);
+		acpigen_write_name("_CRS");
 		acpigen_write_resourcetemplate_header();
 
 		if (!stack_enabled)
@@ -314,6 +316,7 @@ static void create_dsdt_ubox_resource(uint8_t socket, uint8_t stack, const STACK
 					      0x0, 1);
 
 		acpigen_write_resourcetemplate_footer();
+		acpigen_pop_len();
 	}
 }
 
@@ -333,12 +336,12 @@ static void create_dsdt_stack_sta(uint8_t socket, uint8_t stack, const STACK_RES
 		acpigen_write_name_integer(stack_sta, ACPI_STATUS_DEVICE_ALL_ON);
 }
 
-void uncore_inject_dsdt(const struct device *device)
+void uncore_fill_ssdt(const struct device *device)
 {
 	bool stack_enabled;
 
 	/* Only add RTxx entries once. */
-	if (device->bus->secondary != 0)
+	if (device->upstream->secondary != 0)
 		return;
 
 	/*
@@ -357,8 +360,6 @@ void uncore_inject_dsdt(const struct device *device)
 
 	printk(BIOS_DEBUG, "%s device: %s\n", __func__, dev_path(device));
 
-	acpigen_write_scope("\\_SB");
-
 	/* The _CSR generation must match SPR iiostack.asl. */
 	const IIO_UDS *hob = get_iio_uds();
 	/* Iterate over CONFIG_MAX_SOCKET to keep ASL templates and DSDT injection in sync */
@@ -375,10 +376,12 @@ void uncore_inject_dsdt(const struct device *device)
 
 			if (stack <= IioStack5) { // TYPE_UBOX_IIO
 				create_dsdt_iou_pci_resource(socket, stack, ri, stack_enabled);
-				create_dsdt_iou_cxl_resource(socket, stack, ri, stack_enabled);
+				if (is_iio_cxl_stack_res(ri))
+					create_dsdt_iou_cxl_resource(socket, stack, ri,
+						stack_enabled);
 				create_dsdt_stack_sta(socket, stack, ri, stack_enabled);
 			} else if (stack >= IioStack8 && stack <= IioStack11) { // TYPE_DINO
-				create_dsdt_dino_resource(socket, stack, ri, stack_enabled);
+				create_dsdt_ioat_resource(socket, stack, ri, stack_enabled);
 				create_dsdt_stack_sta(socket, stack, ri, stack_enabled);
 			} else if (stack == IioStack13) { // TYPE_UBOX
 				create_dsdt_ubox_resource(socket, stack, ri, stack_enabled);
@@ -386,8 +389,6 @@ void uncore_inject_dsdt(const struct device *device)
 			}
 		}
 	}
-
-	acpigen_pop_len();
 }
 
 /* TODO: See if we can use the common generate_p_state_entries */
@@ -501,7 +502,7 @@ unsigned long xeonsp_acpi_create_madt_lapics(unsigned long current)
 
 	for (cpu = all_devices; cpu; cpu = cpu->next) {
 		if ((cpu->path.type != DEVICE_PATH_APIC)
-		    || (cpu->bus->dev->path.type != DEVICE_PATH_CPU_CLUSTER)) {
+		    || (cpu->upstream->dev->path.type != DEVICE_PATH_CPU_CLUSTER)) {
 			continue;
 		}
 		if (!cpu->enabled)

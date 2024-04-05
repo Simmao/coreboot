@@ -13,22 +13,13 @@
 #include <soc/soc_util.h>
 #include <soc/util.h>
 
-#if CONFIG(HAVE_ACPI_TABLES)
-const char *soc_acpi_name(const struct device *dev)
-{
-	if (dev->path.type == DEVICE_PATH_DOMAIN)
-		return "PC00";
-	return NULL;
-}
-#endif
-
 static struct device_operations pci_domain_ops = {
-	.read_resources = &pci_domain_read_resources,
-	.set_resources = &xeonsp_pci_domain_set_resources,
-	.scan_bus = &xeonsp_pci_domain_scan_bus,
+	.read_resources = iio_pci_domain_read_resources,
+	.set_resources = pci_domain_set_resources,
+	.scan_bus = iio_pci_domain_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.write_acpi_tables  = &northbridge_write_acpi_tables,
-	.acpi_name        = soc_acpi_name
+	.acpi_name          = soc_acpi_name,
 #endif
 };
 
@@ -89,7 +80,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 }
 
 struct chip_operations soc_intel_xeon_sp_skx_ops = {
-	CHIP_NAME("Intel Skylake-SP")
+	.name = "Intel Skylake-SP",
 	.enable_dev = soc_enable_dev,
 	.init = soc_init,
 	.final = soc_final

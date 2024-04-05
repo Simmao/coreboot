@@ -15,10 +15,10 @@ static int spi_acpi_get_bus(const struct device *dev)
 	struct device *spi_dev;
 	struct device_operations *ops;
 
-	if (!dev->bus || !dev->bus->dev)
+	if (!dev->upstream || !dev->upstream->dev)
 		return -1;
 
-	spi_dev = dev->bus->dev;
+	spi_dev = dev->upstream->dev;
 	ops = spi_dev->ops;
 
 	if (ops && ops->ops_spi_bus &&
@@ -200,6 +200,6 @@ static void spi_acpi_enable(struct device *dev)
 }
 
 struct chip_operations drivers_spi_acpi_ops = {
-	CHIP_NAME("SPI Device")
+	.name = "SPI Device",
 	.enable_dev = spi_acpi_enable
 };

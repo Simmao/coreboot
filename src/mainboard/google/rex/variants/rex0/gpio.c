@@ -46,10 +46,6 @@ static const struct pad_config gpio_table[] = {
 
 	/* GPP_A18 : [] ==> CAM_PSW_L */
 	PAD_CFG_GPI_INT_LOCK(GPP_A18, NONE, EDGE_BOTH, LOCK_CONFIG),
-	/* GPP_A19 : [] ==> EN_PP3300_SSD */
-	PAD_CFG_GPO(GPP_A19, 1, DEEP),
-	/* GPP_A20 : [] ==> SSD_PERST_L */
-	PAD_CFG_GPO_LOCK(GPP_A20, 1, LOCK_CONFIG),
 	/* GPP_A21 : [] ==> WWAN_CONFIG2 */
 	PAD_CFG_GPI(GPP_A21, NONE, DEEP),
 
@@ -76,7 +72,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_B10 : [] ==> WIFI_DISABLE_L */
 	PAD_CFG_GPO(GPP_B10, 1, DEEP),
 	/* GPP_B11 : [] ==> EN_FP_PWR */
-	PAD_CFG_GPO_LOCK(GPP_B11, 1, LOCK_CONFIG),
+	PAD_CFG_GPO_LOCK(GPP_B11, 0, LOCK_CONFIG),
 	/* GPP_B12 : [] ==> SLP_SO_R_L */
 	PAD_CFG_NF(GPP_B12, NONE, DEEP, NF1),
 	/* GPP_B13 : [] ==> PLT_RST_L */
@@ -145,7 +141,7 @@ static const struct pad_config gpio_table[] = {
 	/* GPP_C22 : [] ==> SOC_FP_BOOT0 */
 	PAD_CFG_GPO_LOCK(GPP_C22, 0, LOCK_CONFIG),
 	/* GPP_C23 : [] ==> FP_RST_ODL */
-	PAD_CFG_GPO_LOCK(GPP_C23, 1, LOCK_CONFIG),
+	PAD_CFG_GPO_LOCK(GPP_C23, 0, LOCK_CONFIG),
 
 	/* GPP_D00 : WCAM_MCLK_R */
 	PAD_CFG_NF(GPP_D00, NONE, DEEP, NF1),
@@ -376,10 +372,8 @@ static const struct pad_config gpio_table[] = {
 
 /* Early pad configuration in bootblock */
 static const struct pad_config early_gpio_table[] = {
-	/* GPP_A19 : [] ==> EN_PP3300_SSD */
-	PAD_CFG_GPO(GPP_A19, 0, DEEP),
 	/* GPP_A20 : [] ==> SSD_PERST_L */
-	PAD_CFG_GPO(GPP_A20, 1, DEEP),
+	PAD_CFG_GPO(GPP_A20, 0, DEEP),
 
 	/* GPP_B16 : [] ==> SOC_HDMI_HPD_L */
 	PAD_CFG_NF(GPP_B16, NONE, DEEP, NF2),
@@ -417,22 +411,22 @@ static const struct pad_config early_gpio_table[] = {
 
 	/* GPP_H10 : [] ==> SOC_WP_OD */
 	PAD_CFG_GPI_GPIO_DRIVER_LOCK(GPP_H10, NONE, LOCK_CONFIG),
+
+	/* GPP_A19 : [] ==> EN_PP3300_SSD */
+	PAD_CFG_GPO(GPP_A19, 1, DEEP),
 };
 
 static const struct pad_config romstage_gpio_table[] = {
-	/* GPP_A19 : [] ==> EN_PP3300_SSD */
-	PAD_CFG_GPO(GPP_A19, 1, DEEP),
-
 	/* GPP_B11 : [] ==> EN_FP_PWR */
 	PAD_CFG_GPO(GPP_B11, 0, DEEP),
-	/* A20 : [] ==> SSD_PERST_L */
-	PAD_CFG_GPO(GPP_A20, 0, DEEP),
 	/* GPP_C23 : [] ==> FP_RST_ODL */
 	PAD_CFG_GPO(GPP_C23, 0, DEEP),
 	/* GPP_E07 : [] ==> WWAN_FCPO_L */
 	PAD_CFG_GPO(GPP_E07, 1, DEEP),
 	/* GPP_D02 : [] ==> SD_PERST_L */
 	PAD_CFG_GPO(GPP_D02, 1, DEEP),
+	/* GPP_A20 : [] ==> SSD_PERST_L */
+	PAD_CFG_GPO(GPP_A20, 1, DEEP),
 };
 
 const struct pad_config *variant_gpio_table(size_t *num)

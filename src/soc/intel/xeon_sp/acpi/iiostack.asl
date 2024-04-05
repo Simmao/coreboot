@@ -14,11 +14,6 @@
 			}						\
 			Return (\_SB_.PR##rt)				\
 		}							\
-		External(\_SB.RT##id)					\
-		Method (_CRS, 0, NotSerialized)				\
-		{							\
-			Return (\_SB.RT##id)				\
-		}							\
 		Name (SUPP, 0x00)					\
 		Name (CTRL, 0x00)					\
 		Name (_PXM, 0x00)  /* _PXM: Device Proximity */		\
@@ -36,7 +31,7 @@
 				CreateDWordField (Arg3, 0x08, CDW3)		\
 				SUPP = CDW2					\
 				CTRL = CDW3					\
-				If ((AHPE || ((SUPP & 0x16) != 0x16)))		\
+				If ((SUPP & 0x16) != 0x16)		\
 				{						\
 					CTRL &= 0x1E				\
 				}						\

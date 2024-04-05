@@ -12,6 +12,10 @@ config SOC_INTEL_SAPPHIRERAPIDS_SP
 	select PLATFORM_USES_FSP2_3
 	select SOC_INTEL_CSE_SERVER_SKU
 	select XEON_SP_COMMON_BASE
+	select HAVE_IOAT_DOMAINS
+	select FSP_SPEC_VIOLATION_XEON_SP_HEAP_WORKAROUND
+	select UDK_202005_BINDING
+	select SOC_INTEL_HAS_CXL
 	help
 	  Intel Sapphire Rapids-SP support
 
@@ -111,9 +115,6 @@ config SOC_INTEL_HAS_BIOS_DONE_MSR
 config SOC_INTEL_HAS_NCMEM
 	def_bool y
 
-config SOC_INTEL_HAS_CXL
-	def_bool y
-
 config SOC_INTEL_PCIE_64BIT_ALLOC
 	def_bool y
 
@@ -183,4 +184,12 @@ config ENABLE_RMT
 	help
 	  Enable Rank Margining Tool. This option is intended for debugging and
 	  validation and should normally be disabled.
+
+config RMT_MEM_POR_FREQ
+	bool "Enforce Plan Of Record restrictions for DDR5 frequency and voltage"
+	default n
+	depends on ENABLE_RMT
+	help
+	  When RMT is enabled. Select this option to enforce Intel Plan Of Record(POR)
+	  restriction on DDR5 frequency & voltage settings.
 endif

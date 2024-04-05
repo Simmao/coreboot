@@ -3,13 +3,13 @@
 #include <bootmode.h>
 #include <device/device.h>
 #include <soc/bl31.h>
+#include <soc/display.h>
 #include <soc/i2c.h>
 #include <soc/msdc.h>
 #include <soc/mt6359p.h>
 #include <soc/mtcmos.h>
 #include <soc/usb.h>
 
-#include "display.h"
 #include "gpio.h"
 
 #define AFE_SE_SECURE_CON	(AUDIO_BASE + 0x17a8)
@@ -31,7 +31,7 @@ static void configure_i2s(void)
 
 static void configure_audio(void)
 {
-	if (CONFIG(USE_MAX98390)) {
+	if (CONFIG(GERALT_USE_MAX98390)) {
 		printk(BIOS_DEBUG, "Configure MAX98390 audio\n");
 
 		mtk_i2c_bus_init(I2C0, I2C_SPEED_FAST);
@@ -44,7 +44,7 @@ static void mainboard_init(struct device *dev)
 	mt6359p_init_pmif_arb();
 
 	if (display_init_required()) {
-		if (configure_display() < 0)
+		if (mtk_display_init() < 0)
 			printk(BIOS_ERR, "%s: Failed to init display\n", __func__);
 	} else {
 		printk(BIOS_INFO, "%s: Skipped display initialization\n", __func__);
@@ -54,7 +54,7 @@ static void mainboard_init(struct device *dev)
 
 	configure_audio();
 
-	if (CONFIG(SDCARD_INIT))
+	if (CONFIG(GERALT_SDCARD_INIT))
 		mtk_msdc_configure_sdcard();
 
 	setup_usb_host();

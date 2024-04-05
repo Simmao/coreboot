@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <console/console.h>
 #include <device/mmio.h>
 #include <device/pci_ops.h>
 #include <device/pci_def.h>
@@ -15,16 +16,31 @@ void early_usb_init(const struct southbridge_usb_port *portmap)
 		/* 3560 */ 0x024c8001, 0x000024a3, 0x00040002, 0x01000050,
 		/* 3570 */ 0x02000772, 0x16000f9f, 0x1800ff4f, 0x0001d630,
 	};
-	const u32 currents[] = { 0x20000153, 0x20000f57, 0x2000055b, 0x20000f51,
-				 0x2000094a, 0x2000035f, 0x20000f53, 0x20000357,
-				 0x20000353 };
+	const u32 currents[] = { USBIR_TXRX_GAIN_MOBILE_LOW, USBIR_TXRX_GAIN_DEFAULT,
+				 USBIR_TXRX_GAIN_HIGH, 0x20000f51, 0x2000094a, 0x2000035f,
+				 USBIR_TXRX_GAIN_DESKTOP_LOW, 0x20000357, 0x20000353 };
 	int i;
 
 	/* Unlock registers.  */
 	write_pmbase16(UPRWC, read_pmbase16(UPRWC) | UPRWC_WR_EN);
 
-	for (i = 0; i < 14; i++)
-		RCBA32(USBIR0 + 4 * i) = currents[portmap[i].current];
+	for (i = 0; i < 14; i++) {
+		if (portmap[i].enabled && !pch_is_mobile() &&
+		    currents[portmap[i].current] == USBIR_TXRX_GAIN_MOBILE_LOW) {
+			/*
+			 * Note for developers: You can fix this by re-running autoport on
+			 * vendor firmware and then updating portmap currents accordingly.
+			 * If that is not possible, another option is to choose a non-zero
+			 * current setting. In either case, please test all the USB ports.
+			 */
+			printk(BIOS_ERR, "%s: USB%02d: USBIR_TXRX_GAIN_MOBILE_LOW is an invalid setting for desktop!\n",
+			       __func__, i);
+
+			RCBA32(USBIR0 + 4 * i) = USBIR_TXRX_GAIN_DEFAULT;
+		} else {
+			RCBA32(USBIR0 + 4 * i) = currents[portmap[i].current];
+		}
+	}
 	for (i = 0; i < 10; i++)
 		RCBA32(0x3538 + 4 * i) = 0;
 

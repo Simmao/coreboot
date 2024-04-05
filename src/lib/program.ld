@@ -68,7 +68,7 @@
 	LONG(0);
 	LONG(0);
 	__CTOR_END__ = .;
-}
+} : to_load
 #endif
 
 /* Include data, bss, and heap in that order. Not defined for all stages. */
@@ -113,11 +113,11 @@
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_edata = .;
 	RECORD_SIZE(data)
-}
+} : to_load
 #endif
 
 #if !ENV_SEPARATE_DATA_AND_BSS
-.bss . : {
+.bss . (NOLOAD) : {
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_bss = .;
 	*(.bss)
@@ -127,18 +127,18 @@
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_ebss = .;
 	RECORD_SIZE(bss)
-}
+} : to_load
 #endif
 
 #if ENV_HAS_HEAP_SECTION
-.heap . : {
+.heap . (NOLOAD) : {
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_heap = .;
-	. += (ENV_RMODULE ? __heap_size : CONFIG_HEAP_SIZE);
+	. += CONFIG_HEAP_SIZE;
 	. = ALIGN(ARCH_POINTER_ALIGN_SIZE);
 	_eheap = .;
 	RECORD_SIZE(heap)
-}
+} : to_load
 #endif
 
 #if ENV_RAMSTAGE && CONFIG(ASAN_IN_RAMSTAGE)
@@ -148,6 +148,15 @@
 
 _eprogram = .;
 RECORD_SIZE(program)
+
+/* The stage cache drops CONFIG_HEAP_SIZE bytes from the end of the in-memory
+   image of the ramstage, so ensure that when moving that many bytes backwards
+   from the program end, we're in the heap (or later), in some region that
+   doesn't contain initialized code or data. */
+#if ENV_RAMSTAGE
+_bogus = ASSERT(_eprogram - CONFIG_HEAP_SIZE >= _heap,
+	"HEAP_SIZE and heap misaligned");
+#endif
 
 /* Discard the sections we don't need/want */
 

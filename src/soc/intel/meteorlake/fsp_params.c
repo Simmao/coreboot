@@ -63,7 +63,9 @@ static const struct slot_irq_constraints irq_constraints[] = {
 	{
 		.slot = PCI_DEV_SLOT_DPTF,
 		.fns = {
-			ANY_PIRQ(PCI_DEVFN_DPTF),
+			/* Dynamic Tuning Technology (DTT) device IRQ is not
+			   programmable and is INT_A/PIRQ_A (IRQ 16) */
+			FIXED_INT_PIRQ(PCI_DEVFN_DPTF, PCI_INT_A, PIRQ_A),
 		},
 	},
 	{
@@ -758,7 +760,7 @@ static void fill_fsps_pci_ssid_params(FSP_S_CONFIG *s_cfg,
 
 	for (dev = all_devices; dev; dev = dev->next) {
 		if (!(is_dev_enabled(dev) && dev->path.type == DEVICE_PATH_PCI &&
-		    dev->bus->secondary == 0))
+		    dev->upstream->secondary == 0))
 			continue;
 
 		if (dev->path.pci.devfn == PCI_DEVFN_ROOT) {
@@ -836,7 +838,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
  *   1     |  After TCSS initialization completed             |  for TCSS specific init
  *   2     |  Before BIOS Reset CPL is set by FSP-S           |  for CPU specific init
  */
-void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
+void platform_fsp_silicon_multi_phase_init_cb(uint32_t phase_index)
 {
 	switch (phase_index) {
 	case 1:

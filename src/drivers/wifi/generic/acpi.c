@@ -5,6 +5,7 @@
 #include <acpi/acpigen_pci.h>
 #include <console/console.h>
 #include <device/pci_ids.h>
+#include <mtcl.h>
 #include <sar.h>
 #include <stdlib.h>
 #include <wrdd.h>
@@ -144,7 +145,7 @@ static void wifi_dsm_unii4_control_enable(void *args)
 static void wifi_dsm_ddrrfim_func3_cb(void *ptr)
 {
 	const bool is_cnvi_ddr_rfim_enabled = *(bool *)ptr;
-	acpigen_write_return_integer(is_cnvi_ddr_rfim_enabled ? 1 : 0);
+	acpigen_write_return_integer(is_cnvi_ddr_rfim_enabled ? 0 : 1);
 }
 
 static void (*wifi_dsm_callbacks[])(void *) = {
@@ -471,7 +472,7 @@ static void emit_sar_acpi_structures(const struct device *dev, struct dsm_profil
 	if (dev->path.type == DEVICE_PATH_PCI && dev->vendor != PCI_VID_INTEL)
 		return;
 
-	/* Retrieve the sar limits data */
+	/* Retrieve the SAR limits data */
 	if (get_wifi_sar_limits(&sar_limits) < 0) {
 		printk(BIOS_ERR, "failed getting SAR limits!\n");
 		return;
@@ -549,7 +550,7 @@ static void wifi_ssdt_write_properties(const struct device *dev, const char *sco
 	struct dsm_profile dsm = {0};
 	uint8_t dsm_count = 0;
 
-	/* Fill Wifi sar related ACPI structures */
+	/* Fill Wifi SAR related ACPI structures */
 	if (CONFIG(USE_SAR)) {
 		emit_sar_acpi_structures(dev, &dsm);
 
@@ -576,7 +577,18 @@ static void wifi_ssdt_write_properties(const struct device *dev, const char *sco
 
 	acpigen_write_dsm_uuid_arr(dsm_ids, dsm_count);
 
-	acpigen_pop_len(); /* Scope */
+	/*
+	 * Fill MediaTek MTCL related ACPI structure iff the device type is PCI,
+	 * the device has the MediaTek vendor ID, and the MTCL feature is
+	 * configured.
+	 */
+	if (CONFIG(USE_MTCL)) {
+		if (dev->path.type == DEVICE_PATH_PCI &&
+		    dev->vendor == PCI_VID_MEDIATEK)
+			write_mtcl_function();
+	}
+
+	acpigen_write_scope_end(); /* Scope */
 
 	printk(BIOS_INFO, "%s: %s %s\n", scope, dev->chip_ops ? dev->chip_ops->name : "",
 	       dev_path(dev));
@@ -610,7 +622,7 @@ void wifi_cnvi_fill_ssdt(const struct device *dev)
 	if (!dev)
 		return;
 
-	path = acpi_device_path(dev->bus->dev);
+	path = acpi_device_path(dev->upstream->dev);
 	if (!path)
 		return;
 

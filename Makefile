@@ -23,27 +23,34 @@ COREBOOT_EXPORTS += top src srck obj objutil objk
 DOTCONFIG ?= $(top)/.config
 KCONFIG_CONFIG = $(DOTCONFIG)
 KCONFIG_AUTOADS := $(obj)/cb-config.ads
+KCONFIG_RUSTCCFG := $(obj)/cb-config.rustcfg
 KCONFIG_AUTOHEADER := $(obj)/config.h
 KCONFIG_AUTOCONFIG := $(obj)/auto.conf
 KCONFIG_DEPENDENCIES := $(obj)/auto.conf.cmd
 KCONFIG_SPLITCONFIG := $(obj)/config/
 KCONFIG_TRISTATE := $(obj)/tristate.conf
 KCONFIG_NEGATIVES := 1
-KCONFIG_STRICT := 1
+KCONFIG_WERROR := 1
+KCONFIG_WARN_UNKNOWN_SYMBOLS := 1
 KCONFIG_PACKAGE := CB.Config
 KCONFIG_MAKEFILE_REAL ?= $(objk)/Makefile.real
 
 COREBOOT_EXPORTS += KCONFIG_CONFIG KCONFIG_AUTOHEADER KCONFIG_AUTOCONFIG
 COREBOOT_EXPORTS += KCONFIG_DEPENDENCIES KCONFIG_SPLITCONFIG KCONFIG_TRISTATE
-COREBOOT_EXPORTS += KCONFIG_NEGATIVES KCONFIG_STRICT
+COREBOOT_EXPORTS += KCONFIG_NEGATIVES
+ifeq ($(filter %config,$(MAKECMDGOALS)),)
+COREBOOT_EXPORTS += KCONFIG_WERROR
+endif
+COREBOOT_EXPORTS += KCONFIG_WARN_UNKNOWN_SYMBOLS
 COREBOOT_EXPORTS += KCONFIG_AUTOADS KCONFIG_PACKAGE
+COREBOOT_EXPORTS += KCONFIG_RUSTCCFG
 
 # Make does not offer a recursive wildcard function, so here's one:
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SYMLINK_LIST = $(call rwildcard,site-local/,symlink.txt)
 
 
-# directory containing the toplevel Makefile.inc
+# Directory containing the toplevel Makefile.mk
 TOPLEVEL := .
 
 CONFIG_SHELL := sh
@@ -95,7 +102,7 @@ help_coreboot help::
 
 # This include must come _before_ the pattern rules below!
 # Order _does_ matter for pattern rules.
-include $(srck)/Makefile.inc
+include $(srck)/Makefile.mk
 
 # The cases where we don't need fully populated $(obj) lists:
 # 1. when no .config exists
@@ -134,6 +141,12 @@ NOCOMPILE:=
 endif
 endif
 
+# When building the "tools" target, the BUILD_ALL_TOOLS variable needs
+# to be set before reading the tools' Makefiles
+ifneq ($(filter tools, $(MAKECMDGOALS)), )
+BUILD_ALL_TOOLS:=1
+endif
+
 $(xcompile): util/xcompile/xcompile
 	rm -f $@
 	$< $(XGCCPATH) > $@.tmp
@@ -146,11 +159,12 @@ ifeq ($(NOCOMPILE),1)
 HOSTCC ?= $(if $(shell type gcc 2>/dev/null),gcc,cc)
 HOSTCXX ?= g++
 
-include $(TOPLEVEL)/Makefile.inc
-include $(TOPLEVEL)/payloads/Makefile.inc
-include $(TOPLEVEL)/util/testing/Makefile.inc
+include $(TOPLEVEL)/Makefile.mk
+include $(TOPLEVEL)/payloads/Makefile.mk
+include $(TOPLEVEL)/util/testing/Makefile.mk
+-include $(TOPLEVEL)/site-local/Makefile.mk
 -include $(TOPLEVEL)/site-local/Makefile.inc
-include $(TOPLEVEL)/tests/Makefile.inc
+include $(TOPLEVEL)/tests/Makefile.mk
 printall real-all:
 	@echo "Error: Trying to build, but NOCOMPILE is set." >&2
 	@echo "  Please file a bug with the following information:"
@@ -191,7 +205,7 @@ endif
 export LANG LC_ALL TZ SOURCE_DATE_EPOCH
 
 ifneq ($(UNIT_TEST),1)
-include toolchain.inc
+include toolchain.mk
 endif
 
 strip_quotes = $(strip $(subst ",,$(subst \",,$(1))))
@@ -269,7 +283,7 @@ src-to-ali=\
 	$(subst .$(1),,\
 	$(filter %.ads %.adb,$(2)))))))))
 
-# Clean -y variables, include Makefile.inc
+# Clean -y variables, include Makefile.mk & Makefile.inc
 # Add paths to files in X-y to X-srcs
 # Add subdirs-y to subdirs
 includemakefiles= \
@@ -288,9 +302,12 @@ includemakefiles= \
 
 # For each path in $(subdirs) call includemakefiles
 # Repeat until subdirs is empty
+# TODO: Remove Makefile.inc support
 evaluate_subdirs= \
 	$(eval cursubdirs:=$(subdirs)) \
 	$(eval subdirs:=) \
+	$(foreach dir,$(cursubdirs), \
+		$(eval $(call includemakefiles,$(dir)/Makefile.mk))) \
 	$(foreach dir,$(cursubdirs), \
 		$(eval $(call includemakefiles,$(dir)/Makefile.inc))) \
 	$(if $(subdirs),$(eval $(call evaluate_subdirs)))
@@ -299,11 +316,11 @@ evaluate_subdirs= \
 subdirs:=$(TOPLEVEL)
 postinclude-hooks :=
 
-# Don't iterate through Makefile.incs under src/ when building tests
+# Don't iterate through Makefiles under src/ when building tests
 ifneq ($(UNIT_TEST),1)
 $(eval $(call evaluate_subdirs))
 else
-include $(TOPLEVEL)/tests/Makefile.inc
+include $(TOPLEVEL)/tests/Makefile.mk
 endif
 
 ifeq ($(FAILBUILD),1)

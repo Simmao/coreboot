@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 if ARCH_X86
 
 config PARALLEL_MP
@@ -149,6 +151,13 @@ config HAVE_SMI_HANDLER
 config NO_SMM
 	bool
 	default n
+
+config USE_1G_PAGES_TLB
+	bool
+	default n
+	help
+	  Select this option to enable access to up to 512 GiB of memory
+	  by using 1 GiB large pages.
 
 config SMM_ASEG
 	bool

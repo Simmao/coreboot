@@ -44,6 +44,32 @@
 #define PLATFORM_HAS_10GBE_0_REGION (platform == PLATFORM_DNV)
 #define PLATFORM_HAS_10GBE_1_REGION (platform == PLATFORM_DNV)
 
+union gprd {
+	struct bit_field {
+		/*
+		 * Start Address: bit 0-14 of the GPRD represents the
+		 * protected region start address, where bit 0-11 of
+		 * the start address are assumed to be zero.
+		 */
+		uint32_t start:15;
+
+		/* Specifies read protection is enabled */
+		uint32_t read_protect_en:1;
+
+		/*
+		 * End Address: bit 16-30 of the GPRD represents the
+		 * protected region end address, where bit 0-11 of
+		 * the end address are assumed to be 0xfff.
+		 */
+		uint32_t end:15;
+
+		/* Specifies write protection is enabled */
+		uint32_t write_protect_en:1;
+	} __packed data;
+
+	uint32_t value;
+};
+
 static int max_regions_from_fdbar(const struct fdbar *fdb);
 
 static int ifd_version;
@@ -1068,6 +1094,14 @@ static void create_fmap_template(char *image, int size, const char *layout_fname
 		if (region.limit == 0 || region.base == 0x07FFF000)
 			continue;
 
+		/* Is there an FMAP equivalent? IFD reserved regions are usually thrown out
+		 * of the FMAP here
+		 */
+		if (!region_names[region.type].fmapname) {
+			printf("Skip IFD region: %s\n", region_names[region.type].pretty);
+			continue;
+		}
+
 		/* Here we decide to use the coreboot generated FMAP BIOS region, instead of
 		 * the one specified in the IFD. The case when IFD and FMAP BIOS region do not
 		 * match cannot be caught here, therefore one should still validate IFD and
@@ -1321,6 +1355,36 @@ static int check_region(const struct frba *frba, unsigned int region_type)
 	return !!((region.base < region.limit) && (region.size > 0));
 }
 
+/*
+ * Platforms from CNL onwards support up to 16 flash regions, not 12. The
+ * permissions for regions [15:12] are stored in extended region read/write
+ * access fields in the FLMSTR registers.
+ *
+ * FLMSTR with extended regions:
+ *   31:20 Region Write Access
+ *   19:8  Region Read Access
+ *    7:4  Extended Region Write Access
+ *    3:0  Extended Region Read Access
+ *
+ * FLMSTR without extended regions:
+ *   31:20 Region Write Access
+ *   19:8  Region Read Access
+ *    7:0  Reserved
+ */
+static bool platform_has_extended_regions(void)
+{
+	switch (platform) {
+	case PLATFORM_CNL:
+	case PLATFORM_JSL:
+	case PLATFORM_TGL:
+	case PLATFORM_ADL:
+	case PLATFORM_MTL:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static void lock_descriptor(const char *filename, char *image, int size)
 {
 	int wr_shift, rd_shift;
@@ -1333,11 +1397,21 @@ static void lock_descriptor(const char *filename, char *image, int size)
 		wr_shift = FLMSTR_WR_SHIFT_V2;
 		rd_shift = FLMSTR_RD_SHIFT_V2;
 
-		/* Clear non-reserved bits */
-		fmba->flmstr1 &= 0xff;
-		fmba->flmstr2 &= 0xff;
-		fmba->flmstr3 &= 0xff;
-		fmba->flmstr5 &= 0xff;
+		/*
+		 * Clear all read/write access bits. See comment on
+		 * platform_has_extended_regions() for bitfields.
+		 */
+		if (platform_has_extended_regions()) {
+			fmba->flmstr1 = 0;
+			fmba->flmstr2 = 0;
+			fmba->flmstr3 = 0;
+			fmba->flmstr5 = 0;
+		} else {
+			fmba->flmstr1 &= 0xff;
+			fmba->flmstr2 &= 0xff;
+			fmba->flmstr3 &= 0xff;
+			fmba->flmstr5 &= 0xff;
+		}
 	} else {
 		wr_shift = FLMSTR_WR_SHIFT_V1;
 		rd_shift = FLMSTR_RD_SHIFT_V1;
@@ -1402,6 +1476,10 @@ static void lock_descriptor(const char *filename, char *image, int size)
 			fmba->flmstr5 |= (1 << REGION_DESC) << rd_shift;
 			fmba->flmstr5 |= (1 << REGION_EC) << rd_shift;
 			fmba->flmstr5 |= (1 << REGION_EC) << wr_shift;
+		}
+		if (check_region(frba, REGION_DEV_EXP2)) {
+			/* BIOS can read SPI device expansion 2 region. */
+			fmba->flmstr1 |= (1 << REGION_DEV_EXP2) << rd_shift;
 		}
 		break;
 	case PLATFORM_DNV:
@@ -1474,11 +1552,21 @@ static void unlock_descriptor(const char *filename, char *image, int size)
 		exit(EXIT_FAILURE);
 
 	if (ifd_version >= IFD_VERSION_2) {
-		/* Access bits for each region are read: 19:8 write: 31:20 */
-		fmba->flmstr1 = 0xffffff00 | (fmba->flmstr1 & 0xff);
-		fmba->flmstr2 = 0xffffff00 | (fmba->flmstr2 & 0xff);
-		fmba->flmstr3 = 0xffffff00 | (fmba->flmstr3 & 0xff);
-		fmba->flmstr5 = 0xffffff00 | (fmba->flmstr5 & 0xff);
+		/*
+		 * Set all read/write access bits. See comment on
+		 * platform_has_extended_regions() for bitfields.
+		 */
+		if (platform_has_extended_regions()) {
+			fmba->flmstr1 = 0xffffffff;
+			fmba->flmstr2 = 0xffffffff;
+			fmba->flmstr3 = 0xffffffff;
+			fmba->flmstr5 = 0xffffffff;
+		} else {
+			fmba->flmstr1 = 0xffffff00 | (fmba->flmstr1 & 0xff);
+			fmba->flmstr2 = 0xffffff00 | (fmba->flmstr2 & 0xff);
+			fmba->flmstr3 = 0xffffff00 | (fmba->flmstr3 & 0xff);
+			fmba->flmstr5 = 0xffffff00 | (fmba->flmstr5 & 0xff);
+		}
 	} else {
 		fmba->flmstr1 = 0xffff0000;
 		fmba->flmstr2 = 0xffff0000;
@@ -1487,6 +1575,213 @@ static void unlock_descriptor(const char *filename, char *image, int size)
 	}
 
 	write_image(filename, image, size);
+}
+
+static void print_gpr0_range(union gprd reg)
+{
+	printf("--------- GPR0 Protected Range --------------\n");
+	printf("Start address = 0x%08x\n", reg.data.start << 12);
+	printf("End address = 0x%08x\n", (reg.data.end << 12) | 0xfff);
+}
+
+static uint8_t get_cse_data_partition_offset(void)
+{
+	uint8_t data_offset = 0xff;
+
+	switch (platform) {
+	case PLATFORM_CNL:
+	case PLATFORM_JSL:
+		data_offset = 0x10;
+		break;
+	case PLATFORM_TGL:
+	case PLATFORM_ADL:
+	case PLATFORM_MTL:
+		data_offset = 0x18;
+		break;
+	default:
+		break;
+	}
+
+	return data_offset;
+}
+
+static uint32_t get_gpr0_offset(void)
+{
+	/* Offset expressed as number of 32-bit fields from FPSBA */
+	uint32_t gpr0_offset = 0xffffffff;
+
+	switch (platform) {
+	case PLATFORM_CNL:
+		gpr0_offset = 0x10;
+		break;
+	case PLATFORM_JSL:
+		gpr0_offset = 0x12;
+		break;
+	case PLATFORM_TGL:
+	case PLATFORM_ADL:
+		gpr0_offset = 0x15;
+		break;
+	case PLATFORM_MTL:
+		gpr0_offset = 0x40;
+		break;
+	default:
+		break;
+	}
+
+	return gpr0_offset;
+}
+
+static void disable_gpr0(const char *filename, char *image, int size)
+{
+	struct fpsba *fpsba = find_fpsba(image, size);
+	if (!fpsba)
+		exit(EXIT_FAILURE);
+
+	uint32_t gpr0_offset = get_gpr0_offset();
+	if (gpr0_offset == 0xffffffff) {
+		fprintf(stderr, "Disabling GPR0 not supported on this platform\n");
+		exit(EXIT_FAILURE);
+	}
+
+	union gprd reg;
+	/* If bit 31 is set then GPR0 protection is enable */
+	reg.value = fpsba->pchstrp[gpr0_offset];
+	if (!reg.data.write_protect_en) {
+		printf("GPR0 protection is already disabled\n");
+		return;
+	}
+
+	printf("Value at GPRD offset (%d) is 0x%08x\n", gpr0_offset, reg.value);
+	print_gpr0_range(reg);
+	/* 0 means GPR0 protection is disabled */
+	fpsba->pchstrp[gpr0_offset] = 0;
+	write_image(filename, image, size);
+	printf("GPR0 protection is now disabled\n");
+}
+
+/*
+ * Helper function to parse the FPT to retrieve the FITC start offset and size.
+ * FITC is a sub-partition table inside CSE data partition known as FPT.
+ *
+ * CSE Region
+ *   |-----> CSE Data Partition Offset
+ *   |              |------->  FPT Entry
+ *   |              |              |-> Sub Partition 1
+ *   |              |              |-> Sub Partition 2
+ *   |              |              |-> FITC
+ *   |              |              |     | -> FITC Offset
+ *   |              |              |     | -> FITC Length
+ */
+static int parse_fitc_table(struct cse_fpt *fpt, uint32_t *offset,
+		 size_t *size)
+{
+	size_t num_part_header = fpt->count;
+	/* Move to the next structure which is FPT sub-partition entries */
+	struct cse_fpt_sub_part *fpt_sub_part = (struct cse_fpt_sub_part *)(fpt + 1);
+	for (size_t index = 0; index < num_part_header; index++) {
+		if (!strncmp(fpt_sub_part->signature, "FITC", 4)) {
+			*offset = fpt_sub_part->offset;
+			*size = fpt_sub_part->length;
+			return 0;
+		}
+		fpt_sub_part++;
+	}
+
+	return -1;
+}
+
+/*
+ * Formula to calculate the GPR0 protection range as below:
+ * Start: CSE Region Base Offset
+ * End: Till the end of FITC sub-partition
+ */
+static int calculate_gpr0_range(char *image, int size,
+		 uint32_t *gpr0_start, uint32_t *gpr0_end)
+{
+	struct frba *frba = find_frba(image, size);
+	if (!frba)
+		return -1;
+
+	struct region region = get_region(frba, REGION_ME);
+	if (region.size <= 0) {
+		fprintf(stderr, "Region %s is disabled in target\n",
+				region_name(REGION_ME));
+		return -1;
+	}
+
+	/* CSE Region Start */
+	uint32_t cse_region_start = region.base;
+	/* Get CSE Data Partition Offset */
+	uint8_t cse_data_offset = get_cse_data_partition_offset();
+	if (cse_data_offset == 0xff) {
+		fprintf(stderr, "Unsupported platform\n");
+		exit(EXIT_FAILURE);
+	}
+	uint32_t data_part_offset = *((uint32_t *)(image + cse_region_start + cse_data_offset));
+	/* Start reading the CSE Data Partition Table, also known as FPT */
+	uint32_t data_part_start = data_part_offset + cse_region_start;
+
+	uint32_t fitc_region_start = 0;
+	size_t fitc_region_size = 0;
+	/*
+	 * FPT holds entry for own FPT data structure also bunch of sub-partitions.
+	 * `FITC` is one of such sub-partition entry.
+	 */
+	if (parse_fitc_table(((struct cse_fpt *)(image + data_part_start)),
+			 &fitc_region_start, &fitc_region_size) < 0) {
+		fprintf(stderr, "Unable to find FITC entry\n");
+		return -1;
+	}
+
+	/*
+	 * GPR0 protection is configured to the following range:
+	 * start: CSE region base offset
+	 * end: Till the end of FITC sub-partition (i.e. CSE region + data partition offset +
+	 *       FITC sub partition offset + FITC sub partition size)
+	 */
+	*gpr0_start = cse_region_start;
+	*gpr0_end = (cse_region_start + data_part_offset +
+				 fitc_region_start + fitc_region_size) - 1;
+
+	return 0;
+}
+
+static void enable_gpr0(const char *filename, char *image, int size)
+{
+	struct fpsba *fpsba = find_fpsba(image, size);
+	if (!fpsba)
+		exit(EXIT_FAILURE);
+
+	uint32_t gpr0_offset = get_gpr0_offset();
+	if (gpr0_offset == 0xffffffff) {
+		fprintf(stderr, "Enabling GPR0 not supported on this platform\n");
+		exit(EXIT_FAILURE);
+	}
+
+	union gprd reg;
+	/* If bit 31 is set then GPR0 protection is enable */
+	reg.value = fpsba->pchstrp[gpr0_offset];
+	if (reg.data.write_protect_en) {
+		printf("GPR0 protection is already enabled\n");
+		print_gpr0_range(reg);
+		return;
+	}
+
+	uint32_t gpr0_range_start, gpr0_range_end;
+
+	if (calculate_gpr0_range(image, size, &gpr0_range_start, &gpr0_range_end))
+		exit(EXIT_FAILURE);
+
+	reg.data.start = (gpr0_range_start >> 12) & 0x7fff;
+	reg.data.end = (gpr0_range_end >> 12) & 0x7fff;
+	reg.data.read_protect_en = 0;
+	reg.data.write_protect_en = 1;
+
+	fpsba->pchstrp[gpr0_offset] = reg.value;
+	printf("Value at GPRD offset (%d) is 0x%08x\n", gpr0_offset, reg.value);
+	print_gpr0_range(reg);
+	write_image(filename, image, size);
+	printf("GPR0 protection is now enabled\n");
 }
 
 static void set_pchstrap(struct fpsba *fpsba, const struct fdbar *fdb, const int strap,
@@ -1828,6 +2123,8 @@ static void print_usage(const char *name)
 	       "   -l | --lock                           Lock firmware descriptor and ME region\n"
 	       "   -r | --read				 Enable CPU/BIOS read access for ME region\n"
 	       "   -u | --unlock                         Unlock firmware descriptor and ME region\n"
+	       "   -g | --gpr0-disable                   Disable GPR0 (Global Protected Range) register\n"
+	       "   -E | --gpr0-enable                    Enable GPR0 (Global Protected Range) register\n"
 	       "   -M | --altmedisable <0|1>             Set the MeDisable and AltMeDisable (or HAP for skylake or newer platform)\n"
 	       "                                         bits to disable ME\n"
 	       "   -p | --platform                       Add platform-specific quirks\n"
@@ -1861,6 +2158,7 @@ int main(int argc, char *argv[])
 	int mode_em100 = 0, mode_locked = 0, mode_unlocked = 0, mode_validate = 0;
 	int mode_layout = 0, mode_newlayout = 0, mode_density = 0, mode_setstrap = 0;
 	int mode_read = 0, mode_altmedisable = 0, altmedisable = 0, mode_fmap_template = 0;
+	int mode_gpr0_disable = 0, mode_gpr0_enable = 0;
 	char *region_type_string = NULL, *region_fname = NULL;
 	const char *layout_fname = NULL;
 	char *new_filename = NULL;
@@ -1886,16 +2184,18 @@ int main(int argc, char *argv[])
 		{"lock", 0, NULL, 'l'},
 		{"read", 0, NULL, 'r'},
 		{"unlock", 0, NULL, 'u'},
+		{"gpr0-disable", 0, NULL, 'g'},
+		{"gpr0-enable", 0, NULL, 'E'},
 		{"version", 0, NULL, 'v'},
 		{"help", 0, NULL, 'h'},
-		{"platform", 0, NULL, 'p'},
+		{"platform", 1, NULL, 'p'},
 		{"validate", 0, NULL, 't'},
 		{"setpchstrap", 1, NULL, 'S'},
 		{"newvalue", 1, NULL, 'V'},
 		{0, 0, 0, 0}
 	};
 
-	while ((opt = getopt_long(argc, argv, "S:V:df:F:D:C:M:xi:n:O:s:p:elruvth?",
+	while ((opt = getopt_long(argc, argv, "S:V:df:F:D:C:M:xi:n:O:s:p:elrugEvth?",
 					long_options, &option_index)) != EOF) {
 		switch (opt) {
 		case 'd':
@@ -2098,6 +2398,12 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 			break;
+		case 'g':
+			mode_gpr0_disable = 1;
+			break;
+		case 'E':
+			mode_gpr0_enable = 1;
+			break;
 		case 'p':
 			if (!strcmp(optarg, "aplk")) {
 				platform = PLATFORM_APL;
@@ -2150,7 +2456,8 @@ int main(int argc, char *argv[])
 
 	if ((mode_dump + mode_layout + mode_fmap_template + mode_extract + mode_inject +
 			mode_setstrap + mode_newlayout + (mode_spifreq | mode_em100 |
-			mode_unlocked | mode_locked) + mode_altmedisable + mode_validate) > 1) {
+			mode_unlocked | mode_locked) + mode_altmedisable + mode_validate +
+			(mode_gpr0_disable | mode_gpr0_enable)) > 1) {
 		fprintf(stderr, "You may not specify more than one mode.\n\n");
 		fprintf(stderr, "run '%s -h' for usage\n", argv[0]);
 		exit(EXIT_FAILURE);
@@ -2158,7 +2465,8 @@ int main(int argc, char *argv[])
 
 	if ((mode_dump + mode_layout + mode_fmap_template + mode_extract + mode_inject +
 			mode_setstrap + mode_newlayout + mode_spifreq + mode_em100 +
-			mode_locked + mode_unlocked + mode_density + mode_altmedisable + mode_validate) == 0) {
+			mode_locked + mode_unlocked + mode_density + mode_altmedisable +
+			mode_validate + (mode_gpr0_disable | mode_gpr0_enable)) == 0) {
 		fprintf(stderr, "You need to specify a mode.\n\n");
 		fprintf(stderr, "run '%s -h' for usage\n", argv[0]);
 		exit(EXIT_FAILURE);
@@ -2254,6 +2562,12 @@ int main(int argc, char *argv[])
 
 	if (mode_unlocked)
 		unlock_descriptor(new_filename, image, size);
+
+	if (mode_gpr0_disable)
+		disable_gpr0(new_filename, image, size);
+
+	if (mode_gpr0_enable)
+		enable_gpr0(new_filename, image, size);
 
 	if (mode_setstrap) {
 		struct fpsba *fpsba = find_fpsba(image, size);

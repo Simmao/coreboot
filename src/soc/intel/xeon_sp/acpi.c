@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <assert.h>
+#include <commonlib/stdlib.h>
 #include <intelblocks/acpi.h>
+#include <soc/chip_common.h>
 #include <soc/pci_devs.h>
 #include <soc/util.h>
 #include <stdint.h>
@@ -104,9 +106,9 @@ size_t soc_get_ioapic_info(const uintptr_t *ioapic_bases[])
 		for (int stack = 0; stack < MAX_IIO_STACK; ++stack) {
 			const STACK_RES *ri =
 				&hob->PlatformData.IIO_resource[socket].StackRes[stack];
-			if (!is_iio_stack_res(ri))
-				continue;
 			uint32_t ioapic_base = ri->IoApicBase;
+			if (ioapic_base == 0 || ioapic_base == 0xFFFFFFFF)
+				continue;
 			assert(index < ARRAY_SIZE(xeonsp_ioapic_bases));
 			xeonsp_ioapic_bases[index++] = ioapic_base;
 			if (!CONFIG(XEON_SP_HAVE_IIO_IOAPIC))
@@ -124,4 +126,33 @@ size_t soc_get_ioapic_info(const uintptr_t *ioapic_bases[])
 	}
 
 	return index;
+}
+
+void iio_domain_set_acpi_name(struct device *dev, const char *prefix)
+{
+	const union xeon_domain_path dn = {
+		.domain_path = dev->path.domain.domain
+	};
+
+	assert(dn.socket < CONFIG_MAX_SOCKET);
+	assert(dn.stack < 16);
+	assert(prefix != NULL && strlen(prefix) == 2);
+
+	if (dn.socket >= CONFIG_MAX_SOCKET || dn.stack >= 16 ||
+	    !prefix || strlen(prefix) != 2)
+		return;
+
+	char *name = xmalloc(ACPI_NAME_BUFFER_SIZE);
+	snprintf(name, ACPI_NAME_BUFFER_SIZE, "%s%1X%1X", prefix, dn.socket, dn.stack);
+	dev->name = name;
+}
+
+const char *soc_acpi_name(const struct device *dev)
+{
+	if (dev->path.type == DEVICE_PATH_DOMAIN)
+		return dev->name;
+
+	/* FIXME: Add SoC specific device names here */
+
+	return NULL;
 }

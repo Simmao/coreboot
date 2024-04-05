@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 config SOC_AMD_COMMON_BLOCK_CAR
 	bool
 	help
@@ -37,6 +39,12 @@ config CBFS_CACHE_SIZE
 config ACPI_CPU_STRING
 	string
 	default "C%03X"
+
+config SOC_AMD_COMMON_ROMSTAGE_LEGACY_DMA_FIXUP
+	bool
+	help
+	  Disable the legacy DMA decodes again after the call into the
+	  reference code in romstage to fix up things.
 
 endif # SOC_AMD_COMMON_BLOCK_NONCAR
 

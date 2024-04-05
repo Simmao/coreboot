@@ -40,9 +40,11 @@ RUN \
 		graphviz \
 		lcov \
 		less \
+		libcapture-tiny-perl \
 		libcrypto++-dev \
 		libcurl4 \
 		libcurl4-openssl-dev \
+		libdatetime-perl \
 		libelf-dev \
 		libfreetype-dev \
 		libftdi1-dev \
@@ -51,17 +53,21 @@ RUN \
 		libgpiod-dev \
 		libjaylink-dev \
 		liblzma-dev \
+		libnss3-dev \
 		libncurses-dev \
 		libpci-dev \
 		libreadline-dev \
 		libssl-dev \
+		libtimedate-perl \
 		libusb-1.0-0-dev \
 		libxml2-dev \
 		libyaml-dev \
 		m4 \
 		make \
+		meson \
 		msitools \
 		neovim \
+		ninja-build \
 		openssh-client \
 		openssl \
 		parted \

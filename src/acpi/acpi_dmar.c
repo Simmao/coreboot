@@ -26,7 +26,7 @@ void acpi_create_dmar(acpi_dmar_t *dmar, enum dmar_flags flags,
 	header->length = sizeof(acpi_dmar_t);
 	header->revision = get_acpi_table_revision(DMAR);
 
-	dmar->host_address_width = cpu_phys_address_size() - 1;
+	dmar->host_address_width = soc_phys_address_size() - 1;
 	dmar->flags = flags;
 
 	current = acpi_fill_dmar(current);
@@ -183,7 +183,7 @@ unsigned long acpi_create_dmar_ds_ioapic(unsigned long current,
 unsigned long acpi_create_dmar_ds_ioapic_from_hw(unsigned long current,
 						 u32 addr, u8 bus, u8 dev, u8 fn)
 {
-	u8 enumeration_id = get_ioapic_id((void *)(uintptr_t)addr);
+	u8 enumeration_id = get_ioapic_id((uintptr_t)addr);
 	return acpi_create_dmar_ds(current,
 			SCOPE_IOAPIC, enumeration_id, bus, dev, fn);
 }

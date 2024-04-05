@@ -92,8 +92,8 @@ void usb_xhci_disable_unused(bool (*ext_usb_xhci_en_cb)(unsigned int port_type,
 		return;
 	}
 
-	while ((hub = dev_bus_each_child(xhci->link_list, hub)) != NULL) {
-		while ((port = dev_bus_each_child(hub->link_list, port)) != NULL) {
+	while ((hub = dev_bus_each_child(xhci->downstream, hub)) != NULL) {
+		while ((port = dev_bus_each_child(hub->downstream, port)) != NULL) {
 			enable = true;
 			config = config_of(port);
 			if (config->type == UPC_TYPE_INTERNAL) {
@@ -131,6 +131,7 @@ struct device_operations usb_xhci_ops = {
 };
 
 static const unsigned short pci_device_ids[] = {
+	PCI_DID_INTEL_LNL_XHCI,
 	PCI_DID_INTEL_MTL_XHCI,
 	PCI_DID_INTEL_APL_XHCI,
 	PCI_DID_INTEL_CNL_LP_XHCI,

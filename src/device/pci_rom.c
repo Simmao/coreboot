@@ -169,10 +169,8 @@ struct rom_header *pci_rom_load(struct device *dev,
 	 * devices have a mismatch between the hardware and the ROM.
 	 */
 	if ((dev->class >> 8) == PCI_CLASS_DISPLAY_VGA) {
-#if !CONFIG(MULTIPLE_VGA_ADAPTERS)
 		extern struct device *vga_pri; /* Primary VGA device (device.c). */
 		if (dev != vga_pri) return NULL; /* Only one VGA supported. */
-#endif
 		if ((void *)PCI_VGA_RAM_IMAGE_START != rom_header) {
 			printk(BIOS_DEBUG,
 			       "Copying VGA ROM Image from %p to 0x%x, 0x%x bytes\n",
@@ -232,6 +230,10 @@ ati_rom_acpi_fill_vfct(const struct device *device, acpi_vfct_t *vfct_struct,
 		printk(BIOS_ERR, "%s failed\n", __func__);
 		return current;
 	}
+	if (device->upstream->segment_group) {
+		printk(BIOS_ERR, "VFCT only supports GPU in first PCI segment group.\n");
+		return current;
+	}
 
 	printk(BIOS_DEBUG, "           Copying %sVBIOS image from %p\n",
 			rom == (struct rom_header *)
@@ -241,7 +243,7 @@ ati_rom_acpi_fill_vfct(const struct device *device, acpi_vfct_t *vfct_struct,
 
 	header->DeviceID = device->device;
 	header->VendorID = device->vendor;
-	header->PCIBus = device->bus->secondary;
+	header->PCIBus = device->upstream->secondary;
 	header->PCIFunction = PCI_FUNC(device->path.pci.devfn);
 	header->PCIDevice = PCI_SLOT(device->path.pci.devfn);
 	header->ImageLength = rom->size * 512;

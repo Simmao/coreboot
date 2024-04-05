@@ -14,13 +14,9 @@
 #include <soc/intel/common/vbt.h>
 #include <soc/itss.h>
 #include <soc/pci_devs.h>
+#include <soc/pcie.h>
 #include <soc/ramstage.h>
 #include <soc/soc_chip.h>
-
-static const struct pcie_rp_group pch_rp_groups[] = {
-	{ .slot = PCH_DEV_SLOT_PCIE,    .count = 8, .lcap_port_base = 1 },
-	{ 0 }
-};
 
 #if CONFIG(HAVE_ACPI_TABLES)
 const char *soc_acpi_name(const struct device *dev)
@@ -170,7 +166,7 @@ static void soc_enable(struct device *dev)
 }
 
 struct chip_operations soc_intel_jasperlake_ops = {
-	CHIP_NAME("Intel Jasperlake")
+	.name = "Intel Jasperlake",
 	.enable_dev	= &soc_enable,
 	.init		= &soc_init_pre_device,
 };

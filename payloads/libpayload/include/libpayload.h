@@ -48,12 +48,12 @@
 #include <commonlib/bsd/elog.h>
 #include <commonlib/bsd/fmap_serialized.h>
 #include <commonlib/bsd/helpers.h>
+#include <commonlib/bsd/ipchksum.h>
 #include <commonlib/bsd/mem_chip_info.h>
 #include <ctype.h>
 #include <die.h>
 #include <endian.h>
 #include <fmap.h>
-#include <ipchksum.h>
 #include <kconfig.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -537,8 +537,4 @@ int getline(char *buffer, int len);
 /* Defined in arch/${ARCH}/selfboot.c */
 void selfboot(void *entry);
 
-/* look for area "name" in "fmap", setting offset and size to describe it.
-   Returns 0 on success, < 0 on error. */
-int fmap_region_by_name(const uint32_t fmap_offset, const char * const name,
-			uint32_t * const offset, uint32_t * const size);
 #endif

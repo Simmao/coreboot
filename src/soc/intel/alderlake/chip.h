@@ -153,6 +153,7 @@ static const struct {
 	{ PCI_DID_INTEL_ADL_N_ID_2, ADL_N_041_6W_CORE, TDP_6W },
 	{ PCI_DID_INTEL_ADL_N_ID_3, ADL_N_041_6W_CORE, TDP_6W },
 	{ PCI_DID_INTEL_ADL_N_ID_4, ADL_N_021_6W_CORE, TDP_6W },
+	{ PCI_DID_INTEL_ADL_N_ID_5, ADL_N_041_6W_CORE, TDP_6W },
 	{ PCI_DID_INTEL_ADL_S_ID_1, ADL_S_882_35W_CORE, TDP_35W },
 	{ PCI_DID_INTEL_ADL_S_ID_1, ADL_S_882_65W_CORE, TDP_65W },
 	{ PCI_DID_INTEL_ADL_S_ID_1, ADL_S_882_125W_CORE, TDP_125W },
@@ -735,6 +736,9 @@ struct soc_intel_alderlake_config {
 	 * Set this to 1 in order to disable Package C-state demotion.
 	 */
 	bool disable_package_c_state_demotion;
+
+	/* Enable Enhanced C States */
+	bool enable_c1e;
 
 	/* i915 struct for GMA backlight control */
 	struct i915_gpu_controller_info gfx;

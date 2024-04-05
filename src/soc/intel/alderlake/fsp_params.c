@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootmode.h>
 #include <bootsplash.h>
 #include <console/console.h>
 #include <cpu/intel/microcode.h>
@@ -538,6 +539,7 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 	case PCI_DID_INTEL_ADL_N_ID_2:
 	case PCI_DID_INTEL_ADL_N_ID_3:
 	case PCI_DID_INTEL_ADL_N_ID_4:
+	case PCI_DID_INTEL_ADL_N_ID_5:
 		return ICC_MAX_ID_ADL_N_MA;
 	case PCI_DID_INTEL_ADL_S_ID_1:
 	case PCI_DID_INTEL_ADL_S_ID_3:
@@ -637,7 +639,7 @@ static void fill_fsps_igd_params(FSP_S_CONFIG *s_cfg,
 
 	/* Check if IGD is present and fill Graphics init param accordingly */
 	s_cfg->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(SA_DEVFN_IGD);
-	s_cfg->LidStatus = CONFIG(RUN_FSP_GOP);
+	s_cfg->LidStatus = CONFIG(VBOOT_LID_SWITCH) ? get_lid_switch() : CONFIG(RUN_FSP_GOP);
 	s_cfg->PavpEnable = CONFIG(PAVP);
 }
 
@@ -677,6 +679,8 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 		if (is_dev_enabled(tcss_port_arr[i]))
 			s_cfg->UsbTcPortEn |= BIT(i);
 	}
+
+	s_cfg->Usb4CmMode = CONFIG(SOFTWARE_CONNECTION_MANAGER);
 }
 
 static void fill_fsps_chipset_lockdown_params(FSP_S_CONFIG *s_cfg,
@@ -1069,7 +1073,7 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
 
 	if (cpu_id == CPUID_RAPTORLAKE_J0 || cpu_id == CPUID_RAPTORLAKE_Q0)
-		s_cfg->C1e = 0;
+		s_cfg->C1e = config->enable_c1e;
 	else
 		s_cfg->C1e = 1;
 #if CONFIG(SOC_INTEL_RAPTORLAKE) && !CONFIG(FSP_USE_REPO)
@@ -1338,7 +1342,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
  *   1     |  After TCSS initialization completed             |  for TCSS specific init
  *   2     |  Before BIOS Reset CPL is set by FSP-S           |  for CPU specific init
  */
-void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
+void platform_fsp_silicon_multi_phase_init_cb(uint32_t phase_index)
 {
 	switch (phase_index) {
 	case 1:

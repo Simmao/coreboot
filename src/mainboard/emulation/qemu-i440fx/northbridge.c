@@ -39,7 +39,7 @@ static void qemu_reserve_ports(struct device *dev, unsigned int idx,
 
 static void cpu_pci_domain_set_resources(struct device *dev)
 {
-	assign_resources(dev->link_list);
+	assign_resources(dev->downstream);
 }
 
 static void cpu_pci_domain_read_resources(struct device *dev)
@@ -276,11 +276,11 @@ static void northbridge_enable(struct device *dev)
 }
 
 struct chip_operations mainboard_emulation_qemu_i440fx_ops = {
-	CHIP_NAME("QEMU Northbridge i440fx")
+	.name = "QEMU Northbridge i440fx",
 	.enable_dev = northbridge_enable,
 };
 
 struct chip_operations mainboard_emulation_qemu_q35_ops = {
-	CHIP_NAME("QEMU Northbridge q35")
+	.name = "QEMU Northbridge q35",
 	.enable_dev = northbridge_enable,
 };
